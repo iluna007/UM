@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getViewFromHash, getRouteFromHash, VIEWS } from './constants'
-import { Header, FullListView, ThumbnailView } from './components'
+import { Header, Footer, FullListView, ThumbnailView } from './components'
 import {
   InteractiveMap,
   SoundAnalysis,
@@ -76,6 +76,8 @@ export default function App() {
       <main className="main">
         {renderContent()}
       </main>
+
+      <Footer />
     </div>
   )
 }
