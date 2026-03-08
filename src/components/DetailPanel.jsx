@@ -10,7 +10,7 @@ export default function DetailPanel({ item }) {
         <div className="project-images">
           {item.images.map((src, i) => (
             <div key={i} className="project-image">
-              <img src={src} alt={`${title} ${i + 1}`} />
+              <img src={src} alt={`${title} ${i + 1}`} loading="lazy" />
             </div>
           ))}
         </div>

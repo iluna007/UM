@@ -1,6 +1,7 @@
 export { default as Header } from './Header'
+export { default as MainNav } from './MainNav'
+export { default as ThemeToggle } from './ThemeToggle'
 export { default as TableHeader } from './TableHeader'
-export { default as SortSelect } from './SortSelect'
 export { default as ProjectRow } from './ProjectRow'
 export { default as ProjectItemThumbnail } from './ProjectItemThumbnail'
 export { default as DetailPanel } from './DetailPanel'

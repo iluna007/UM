@@ -28,11 +28,21 @@ export function sortByTitle(items, order = 'asc') {
   })
 }
 
+export function sortByStatus(items, order = 'asc') {
+  return [...items].sort((a, b) => {
+    const statusA = (a.others?.status ?? '').toLowerCase()
+    const statusB = (b.others?.status ?? '').toLowerCase()
+    const cmp = statusA.localeCompare(statusB)
+    return order === 'asc' ? cmp : -cmp
+  })
+}
+
 export const SORT_OPTIONS = {
   date: { label: 'Date', group: false },
   title: { label: 'Title', group: false },
   year: { label: 'Year', group: true, groupFn: groupByYear },
   category: { label: 'Category', group: true, groupFn: groupByCategory },
+  status: { label: 'Status', group: false },
 }
 
 export function getSortedArchive(archive, sortBy) {
@@ -51,6 +61,11 @@ export function getSortedArchive(archive, sortBy) {
     return { grouped, keys }
   }
 
-  const sorted = sortBy === 'date' ? sortByDate(archive, 'desc') : sortByTitle(archive, 'asc')
+  let sorted
+  if (sortBy === 'date') sorted = sortByDate(archive, 'desc')
+  else if (sortBy === 'title') sorted = sortByTitle(archive, 'asc')
+  else if (sortBy === 'status') sorted = sortByStatus(archive, 'asc')
+  else sorted = archive
+
   return { grouped: { all: sorted }, keys: ['all'] }
 }

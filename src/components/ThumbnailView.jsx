@@ -4,7 +4,6 @@ import { getSortedArchive } from '../utils/sortArchive'
 import TableHeader from './TableHeader'
 import ProjectItemThumbnail from './ProjectItemThumbnail'
 import DetailPanel from './DetailPanel'
-import SortSelect from './SortSelect'
 
 export default function ThumbnailView({ selectedId, onSelect }) {
   const [sortBy, setSortBy] = useState('year')
@@ -14,11 +13,9 @@ export default function ThumbnailView({ selectedId, onSelect }) {
   return (
     <div className="main-split">
       <div className="list-wrapper">
-        <div className="list-toolbar">
-          <TableHeader />
-          <SortSelect value={sortBy} onChange={setSortBy} />
-        </div>
-        <div className="project-list thumbnail-view">
+        <div className="table-container">
+          <TableHeader sortBy={sortBy} onSort={setSortBy} />
+          <div className="project-list thumbnail-view">
           {keys.map((key) => (
             <section key={key} className="year-group">
               {keys.length > 1 && <h2 className="year-label">{key}</h2>}
@@ -32,6 +29,7 @@ export default function ThumbnailView({ selectedId, onSelect }) {
               ))}
             </section>
           ))}
+          </div>
         </div>
       </div>
       <DetailPanel item={selectedItem} />
