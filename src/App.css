@@ -100,7 +100,6 @@
 }
 
 .header-title {
-  font-family: 'Libre Baskerville', 'Georgia', serif;
   font-size: 1.25rem;
   font-weight: 400;
   margin: 0;
@@ -203,7 +202,6 @@
 }
 
 .detail-panel .detail-title {
-  font-family: 'Libre Baskerville', 'Georgia', serif;
   font-size: 1.1rem;
   font-weight: 400;
   margin: 1rem 0 0.75rem;
@@ -264,7 +262,6 @@
 /* Year / Category labels */
 .year-label,
 .category-label {
-  font-family: 'Libre Baskerville', 'Georgia', serif;
   font-size: 1.5rem;
   font-weight: 400;
   margin: 2.5rem 0 1rem;
@@ -448,7 +445,6 @@
 }
 
 .page-title {
-  font-family: 'Libre Baskerville', 'Georgia', serif;
   font-size: 2rem;
   font-weight: 400;
   margin: 0 0 0.5rem;
