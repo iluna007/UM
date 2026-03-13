@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import SpectrogramCanvas from './SpectrogramCanvas'
 import {
   computeSpectrogram,
@@ -84,18 +84,15 @@ export default function CreateSpectrogram({ item }) {
     }
   }, [item])
 
+  useEffect(() => {
+    if (item?.audioRecording) handleGenerate()
+  }, [item?.audioRecording, handleGenerate])
+
   if (!item?.audioRecording) return null
 
   return (
     <div className="create-spectrogram">
-      <button
-        type="button"
-        className="create-spectrogram-btn"
-        onClick={handleGenerate}
-        disabled={loading}
-      >
-        {loading ? 'Generando...' : 'Generar espectrograma'}
-      </button>
+      {loading && <p className="create-spectrogram-loading">Generando espectrograma...</p>}
       {error && <p className="create-spectrogram-error">{error}</p>}
       {data && <SpectrogramCanvas data={data} />}
     </div>

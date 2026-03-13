@@ -10,9 +10,7 @@ export default function SoundAnalysis() {
 
   return (
     <div className="page sound-analysis">
-      <p className="page-description">
-        Explore audio recordings and spectrograms.
-      </p>
+      
       <div className="sound-analysis-table-container">
         <div className="sound-track-header">
           <span className="sound-track-header-play" aria-hidden />

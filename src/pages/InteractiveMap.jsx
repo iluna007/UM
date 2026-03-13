@@ -7,7 +7,8 @@ import InteractiveTimeline from '../components/InteractiveTimeline'
 import { getTimeRange, filterItemsByRange } from '../utils/datetime'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-const MAP_STYLE = 'mapbox://styles/ikerluna/cmich0yur000w01s372rm5vgw'
+const MAP_STYLE_LIGHT = 'mapbox://styles/ikerluna/cmmp9964u005401rzhlycalmk'
+const MAP_STYLE_DARK = 'mapbox://styles/ikerluna/cmmp97lzz001o01s46t647djn'
 
 const itemsWithCoords = archive.filter(
   (item) => item.coordinates && item.coordinates.lat != null && item.coordinates.lng != null
@@ -24,6 +25,7 @@ const itemsWithDatetimeAndCoords = itemsWithDatetime.filter(
 const fullRange = getTimeRange(itemsWithDatetime)
 
 export default function InteractiveMap({ theme = 'light' }) {
+  const mapStyle = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
   const markersRef = useRef([])
@@ -64,7 +66,7 @@ export default function InteractiveMap({ theme = 'light' }) {
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
-      style: MAP_STYLE,
+      style: mapStyle,
       bounds: bounds,
       fitBoundsOptions: { padding: 50, maxZoom: 10 },
     })
@@ -96,6 +98,33 @@ export default function InteractiveMap({ theme = 'light' }) {
       mapRef.current = null
     }
   }, [])
+
+  const isInitialMount = useRef(true)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    map.setStyle(mapStyle)
+    map.once('style.load', () => {
+      markersRef.current.forEach((m) => m.remove())
+      const markers = itemsWithDatetimeAndCoords.map((item) => {
+        const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
+        const el = document.createElement('div')
+        el.className = 'map-marker'
+        el.innerHTML = '<span class="map-marker-pin"></span>'
+        el.dataset.id = item.id
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .addTo(map)
+        el.addEventListener('click', () => handleSelectItem(item))
+        return marker
+      })
+      markersRef.current = markers
+    })
+  }, [mapStyle])
 
   useEffect(() => {
     const visibleIds = new Set(visibleItems.map((i) => i.id))

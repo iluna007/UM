@@ -458,6 +458,10 @@
 }
 
 /* Sound Analysis page - SoundCloud-style list */
+.page.sound-analysis {
+  padding: 0;
+}
+
 .sound-analysis-table-container {
   margin-top: 1.5rem;
 }
@@ -655,6 +659,15 @@
   background: var(--color-text);
 }
 
+.sound-track-waveform-bar-loading {
+  animation: sound-waveform-pulse 1s ease-in-out infinite;
+}
+
+@keyframes sound-waveform-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
 .sound-track-audio-full {
   margin-bottom: 1rem;
 }
@@ -688,10 +701,18 @@
   cursor: not-allowed;
 }
 
+.create-spectrogram-loading,
 .create-spectrogram-error {
   margin: 0.5rem 0 0;
-  color: var(--color-error, #c00);
   font-size: 0.9rem;
+}
+
+.create-spectrogram-loading {
+  color: var(--color-text-muted);
+}
+
+.create-spectrogram-error {
+  color: var(--color-error, #c00);
 }
 
 .spectrogram-canvas-wrapper {
@@ -1166,6 +1187,10 @@
   .page {
     padding: 2rem;
   }
+
+  .page.sound-analysis {
+    padding: 0;
+  }
 }
 
 /* Tablet */
@@ -1196,6 +1221,10 @@
 
   .page {
     padding: 1.5rem;
+  }
+
+  .page.sound-analysis {
+    padding: 0;
   }
 
   .page-title {
@@ -1267,6 +1296,10 @@
 
   .page {
     padding: 1rem;
+  }
+
+  .page.sound-analysis {
+    padding: 0;
   }
 
   .page-title {

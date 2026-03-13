@@ -3,9 +3,11 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
-const MAP_STYLE = 'mapbox://styles/ikerluna/cmich0yur000w01s372rm5vgw'
+const MAP_STYLE_LIGHT = 'mapbox://styles/ikerluna/cmmp9964u005401rzhlycalmk'
+const MAP_STYLE_DARK = 'mapbox://styles/ikerluna/cmmp97lzz001o01s46t647djn'
 
-export default function LocationMap({ coordinates }) {
+export default function LocationMap({ coordinates, theme = 'light' }) {
+  const mapStyle = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
   const mapContainer = useRef(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
@@ -19,7 +21,7 @@ export default function LocationMap({ coordinates }) {
       mapboxgl.accessToken = MAPBOX_TOKEN
       mapRef.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: MAP_STYLE,
+        style: mapStyle,
         center: [lng, lat],
         zoom: 12,
       })
@@ -44,6 +46,12 @@ export default function LocationMap({ coordinates }) {
       }
     }
   }, [coordinates])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    map.setStyle(mapStyle)
+  }, [mapStyle])
 
   useEffect(() => {
     return () => {
