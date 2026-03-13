@@ -753,7 +753,7 @@
 /* Timeline - left side, full height */
 .interactive-timeline {
   flex-shrink: 0;
-  width: 260px;
+  width: 300px;
   align-self: stretch;
   display: flex;
   flex-direction: row;

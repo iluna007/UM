@@ -250,10 +250,6 @@ export default function InteractiveTimeline({
               <div
                 key={category}
                 className="timeline-band timeline-band-parallel"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                }}
               >
                 <span
                   className="timeline-band-label"
