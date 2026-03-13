@@ -1,3 +1,3 @@
-﻿# Ensure optional dependencies (esbuild, rollup native binaries) are installed on Linux
+# Ensure optional dependencies (esbuild, rollup native binaries) are installed on Linux
 [build.environment]
   NPM_FLAGS = "--include=optional"
