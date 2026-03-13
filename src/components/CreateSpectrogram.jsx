@@ -92,7 +92,7 @@ export default function CreateSpectrogram({ item }) {
 
   return (
     <div className="create-spectrogram">
-      {loading && <p className="create-spectrogram-loading">Generando espectrograma...</p>}
+      {loading && <p className="create-spectrogram-loading">Generating spectrogram…</p>}
       {error && <p className="create-spectrogram-error">{error}</p>}
       {data && <SpectrogramCanvas data={data} />}
     </div>

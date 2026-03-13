@@ -25,6 +25,22 @@ const itemsWithDatetimeAndCoords = itemsWithDatetime.filter(
 
 const fullRange = getTimeRange(itemsWithDatetime)
 
+function createMapMarker(item, map, onSelect) {
+  const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
+  const el = document.createElement('div')
+  el.className = 'map-marker'
+  const pin = document.createElement('span')
+  pin.className = 'map-marker-pin'
+  pin.style.backgroundColor = getItemPrimaryColor(item)
+  el.appendChild(pin)
+  el.dataset.id = item.id
+  const marker = new mapboxgl.Marker({ element: el })
+    .setLngLat([lng, lat])
+    .addTo(map)
+  el.addEventListener('click', () => onSelect(item))
+  return marker
+}
+
 export default function InteractiveMap({ theme = 'light' }) {
   const mapStyle = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
   const mapContainer = useRef(null)
@@ -39,12 +55,6 @@ export default function InteractiveMap({ theme = 'light' }) {
     [viewRange.min, viewRange.max]
   )
 
-  useEffect(() => {
-    if (selectedItem && !visibleItems.some((i) => i.id === selectedItem.id)) {
-      setSelectedItem(null)
-    }
-  }, [visibleItems, selectedItem])
-
   const handleSelectItem = (item) => {
     setSelectedItem(item)
     if (item?.coordinates && mapRef.current) {
@@ -54,15 +64,22 @@ export default function InteractiveMap({ theme = 'light' }) {
   }
 
   useEffect(() => {
+    if (selectedItem && !visibleItems.some((i) => i.id === selectedItem.id)) {
+      setSelectedItem(null)
+    }
+  }, [visibleItems, selectedItem])
+
+  const handleSelectRef = useRef(handleSelectItem)
+  handleSelectRef.current = handleSelectItem
+
+  useEffect(() => {
     if (!MAPBOX_TOKEN || !mapContainer.current || itemsWithDatetimeAndCoords.length === 0) return
 
     mapboxgl.accessToken = MAPBOX_TOKEN
 
     const bounds = new mapboxgl.LngLatBounds()
-
     itemsWithDatetimeAndCoords.forEach((item) => {
-      const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
-      bounds.extend([lng, lat])
+      bounds.extend([item.coordinates.lng, item.coordinates.lat])
     })
 
     const map = new mapboxgl.Map({
@@ -74,25 +91,10 @@ export default function InteractiveMap({ theme = 'light' }) {
 
     mapRef.current = map
 
-    const markers = itemsWithDatetimeAndCoords.map((item) => {
-      const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
-      const el = document.createElement('div')
-      el.className = 'map-marker'
-      const pin = document.createElement('span')
-      pin.className = 'map-marker-pin'
-      pin.style.backgroundColor = getItemPrimaryColor(item)
-      el.appendChild(pin)
-      el.dataset.id = item.id
-
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([lng, lat])
-        .addTo(map)
-
-      el.addEventListener('click', () => handleSelectItem(item))
-
-      return marker
-    })
-
+    const onSelect = (item) => handleSelectRef.current(item)
+    const markers = itemsWithDatetimeAndCoords.map((item) =>
+      createMapMarker(item, map, onSelect)
+    )
     markersRef.current = markers
 
     return () => {
@@ -113,22 +115,11 @@ export default function InteractiveMap({ theme = 'light' }) {
     }
     map.setStyle(mapStyle)
     map.once('style.load', () => {
+      const onSelect = (item) => handleSelectRef.current(item)
       markersRef.current.forEach((m) => m.remove())
-      const markers = itemsWithDatetimeAndCoords.map((item) => {
-        const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
-        const el = document.createElement('div')
-        el.className = 'map-marker'
-        const pin = document.createElement('span')
-        pin.className = 'map-marker-pin'
-        pin.style.backgroundColor = getItemPrimaryColor(item)
-        el.appendChild(pin)
-        el.dataset.id = item.id
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([lng, lat])
-          .addTo(map)
-        el.addEventListener('click', () => handleSelectItem(item))
-        return marker
-      })
+      const markers = itemsWithDatetimeAndCoords.map((item) =>
+        createMapMarker(item, map, onSelect)
+      )
       markersRef.current = markers
     })
   }, [mapStyle])

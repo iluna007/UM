@@ -195,8 +195,8 @@ export default function InteractiveTimeline({
             onDoubleClick={handleTrackDoubleClick}
             onMouseDown={handleMouseDown}
             role="slider"
-            aria-label="Línea de tiempo: rueda para zoom, doble clic para acercar, arrastrar para desplazar"
-            title="Rueda: zoom · Doble clic: acercar · Arrastrar: desplazar"
+            aria-label="Timeline: scroll to zoom, double-click to zoom in, drag to pan"
+            title="Scroll: zoom · Double-click: zoom in · Drag: pan"
             tabIndex={0}
           >
             <div className="timeline-grid">
@@ -324,7 +324,7 @@ export default function InteractiveTimeline({
             type="button"
             className="timeline-reset-btn"
             onClick={handleResetZoom}
-            title="Ver todo el rango"
+            title="View full range"
             aria-label="Reset zoom"
           >
             ⊡
