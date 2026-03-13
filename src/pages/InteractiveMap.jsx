@@ -5,6 +5,7 @@ import { archive } from '../data/archive'
 import DetailPanel from '../components/DetailPanel'
 import InteractiveTimeline from '../components/InteractiveTimeline'
 import { getTimeRange, filterItemsByRange } from '../utils/datetime'
+import { getItemPrimaryColor } from '../utils/categoryColors'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const MAP_STYLE_LIGHT = 'mapbox://styles/ikerluna/cmmp9964u005401rzhlycalmk'
@@ -77,7 +78,10 @@ export default function InteractiveMap({ theme = 'light' }) {
       const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
       const el = document.createElement('div')
       el.className = 'map-marker'
-      el.innerHTML = '<span class="map-marker-pin"></span>'
+      const pin = document.createElement('span')
+      pin.className = 'map-marker-pin'
+      pin.style.backgroundColor = getItemPrimaryColor(item)
+      el.appendChild(pin)
       el.dataset.id = item.id
 
       const marker = new mapboxgl.Marker({ element: el })
@@ -114,7 +118,10 @@ export default function InteractiveMap({ theme = 'light' }) {
         const [lng, lat] = [item.coordinates.lng, item.coordinates.lat]
         const el = document.createElement('div')
         el.className = 'map-marker'
-        el.innerHTML = '<span class="map-marker-pin"></span>'
+        const pin = document.createElement('span')
+        pin.className = 'map-marker-pin'
+        pin.style.backgroundColor = getItemPrimaryColor(item)
+        el.appendChild(pin)
         el.dataset.id = item.id
         const marker = new mapboxgl.Marker({ element: el })
           .setLngLat([lng, lat])

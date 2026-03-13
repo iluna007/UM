@@ -753,7 +753,7 @@
 /* Timeline - left side, full height */
 .interactive-timeline {
   flex-shrink: 0;
-  width: 140px;
+  width: 260px;
   align-self: stretch;
   display: flex;
   flex-direction: row;
@@ -764,7 +764,7 @@
 
 .timeline-main {
   flex: 1;
-  min-width: 0;
+  min-width: 140px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -920,18 +920,60 @@
   z-index: 3;
 }
 
+.timeline-bands {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.timeline-bands .timeline-band {
+  position: relative;
+  flex: 1;
+  min-width: 24px;
+  pointer-events: none;
+  padding: 0 2px;
+}
+
+.timeline-bands .timeline-band + .timeline-band {
+  border-left: 1px solid var(--color-border);
+}
+
+.timeline-bands .timeline-band .timeline-marker {
+  pointer-events: auto;
+}
+
+.timeline-band-label {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
 .timeline-marker-dot {
   display: block;
   width: 10px;
   height: 10px;
-  background: var(--color-text-muted);
+  background: var(--marker-color, var(--color-text-muted));
   border-radius: 50%;
   transition: transform 0.2s, background 0.2s;
 }
 
 .timeline-marker:hover .timeline-marker-dot,
 .timeline-marker.selected .timeline-marker-dot {
-  background: var(--color-text);
+  background: var(--marker-color, var(--color-text));
   transform: scale(1.3);
 }
 
@@ -993,6 +1035,36 @@
 
 .timeline-scale-btn.spinning {
   background: var(--color-bg-secondary);
+}
+
+.timeline-category-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.timeline-category-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+}
+
+.timeline-category-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.timeline-category-legend-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .interactive-map-container {
@@ -1067,7 +1139,7 @@
 
 @media (max-width: 768px) {
   .interactive-timeline {
-    width: 100px;
+    width: 180px;
   }
 
   .timeline-lateral {

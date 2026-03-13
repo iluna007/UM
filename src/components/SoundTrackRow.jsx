@@ -116,7 +116,9 @@ export default function SoundTrackRow({ item, index }) {
       </div>
       <div className="sound-track-info">
         <span className="sound-track-title">{item.title}</span>
-        <span className="sound-track-meta">{item.category} · {item.date}</span>
+        <span className="sound-track-meta">
+        {(Array.isArray(item.category) ? item.category.join(' · ') : item.category)} · {item.date}
+      </span>
       </div>
       <span className="sound-track-duration">{duration ?? '—'}</span>
       <div className="sound-track-waveform">

@@ -1,10 +1,23 @@
 import { groupByYear } from './groupByYear'
 
+function getCategories(item) {
+  const c = item.category
+  return Array.isArray(c) ? c : (c ? [c] : [])
+}
+
 export function groupByCategory(items) {
   return items.reduce((acc, item) => {
-    const cat = item.category.split(/[/\s]/)[0].trim() || item.category
-    if (!acc[cat]) acc[cat] = []
-    acc[cat].push(item)
+    const cats = getCategories(item)
+    if (cats.length === 0) {
+      const key = 'uncategorized'
+      if (!acc[key]) acc[key] = []
+      acc[key].push(item)
+    } else {
+      cats.forEach((cat) => {
+        if (!acc[cat]) acc[cat] = []
+        acc[cat].push(item)
+      })
+    }
     return acc
   }, {})
 }

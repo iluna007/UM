@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import {
   toTimestamp,
   findNearestItem,
@@ -8,6 +8,9 @@ import {
   getGridLines,
   getScaleUnitMs,
 } from '../utils/datetime'
+import { getUniqueCategories, getItemCategories, getCategoryColor, CATEGORY_COLORS } from '../utils/categoryColors'
+
+const ALL_CATEGORIES = Object.keys(CATEGORY_COLORS)
 
 const ZOOM_FACTOR = 0.5
 const WHEEL_PIXELS_PER_UNIT = 12
@@ -64,7 +67,6 @@ export default function InteractiveTimeline({
   }
 
   const [dragStart, setDragStart] = useState(null)
-  const [lateralDrag, setLateralDrag] = useState(null)
   const didDragRef = useRef(false)
 
   const [wheelSpin, setWheelSpin] = useState(null)
@@ -125,34 +127,6 @@ export default function InteractiveTimeline({
     }
   }
 
-  const handleLateralMouseDown = (e) => {
-    if (e.button === 0) {
-      e.preventDefault()
-      e.stopPropagation()
-      setLateralDrag({ startY: e.clientY, startMin: min, startMax: max })
-    }
-  }
-
-  useEffect(() => {
-    if (!lateralDrag) return
-    const onMove = (e) => {
-      const rect = trackRef.current?.getBoundingClientRect()
-      if (!rect) return
-      const dy = (e.clientY - lateralDrag.startY) / rect.height
-      const rangeSize = lateralDrag.startMax - lateralDrag.startMin
-      const delta = dy * rangeSize
-      const newMin = Math.max(fullRange.min, Math.min(fullRange.max - rangeSize, lateralDrag.startMin + delta))
-      onViewRangeChangeRef.current({ min: newMin, max: newMin + rangeSize })
-    }
-    const onUp = () => setLateralDrag(null)
-    window.addEventListener('mousemove', onMove, { capture: true })
-    window.addEventListener('mouseup', onUp, { capture: true })
-    return () => {
-      window.removeEventListener('mousemove', onMove, { capture: true })
-      window.removeEventListener('mouseup', onUp, { capture: true })
-    }
-  }, [lateralDrag, fullRange.min, fullRange.max])
-
   useEffect(() => {
     const el = trackRef.current
     if (!el) return
@@ -203,18 +177,17 @@ export default function InteractiveTimeline({
   }, [dragStart, fullRange.min, fullRange.max])
 
   const itemsWithDt = items.filter((i) => i.datetime && toTimestamp(i.datetime) > 0)
+  const categories = useMemo(() => {
+    const fromItems = getUniqueCategories(itemsWithDt)
+    return fromItems.length >= ALL_CATEGORIES.length
+      ? fromItems
+      : [...new Set([...ALL_CATEGORIES, ...fromItems])].sort()
+  }, [itemsWithDt])
 
   return (
     <div className="interactive-timeline">
       <div className="timeline-main">
         <div className="timeline-track-wrapper">
-          <div
-            className={`timeline-lateral timeline-lateral-left ${lateralDrag ? 'timeline-lateral-dragging' : ''}`}
-            onMouseDown={handleLateralMouseDown}
-            title="Arrastra arriba/abajo para navegar en el tiempo"
-            role="button"
-            aria-label="Rueda de tiempo: arrastra para navegar"
-          />
           <div
             ref={trackRef}
             className={`timeline-track ${dragStart ? 'timeline-dragging' : ''}`}
@@ -235,7 +208,7 @@ export default function InteractiveTimeline({
               />
             ))}
           </div>
-          <div className="timeline-ruler" />
+          {categories.length <= 1 && <div className="timeline-ruler" />}
           {ticks.map((tick) => (
             <div
               key={tick.ts}
@@ -247,36 +220,79 @@ export default function InteractiveTimeline({
               <span className="timeline-tick-label">{tick.label}</span>
             </div>
           ))}
-          {itemsWithDt.map((item) => {
-            const ts = toTimestamp(item.datetime)
-            const position = ((ts - min) / range) * 100
-            const isSelected = selectedItem?.id === item.id
-            const isInView = position >= 0 && position <= 100
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={`timeline-marker ${isSelected ? 'selected' : ''} ${!isInView ? 'timeline-marker-outside' : ''}`}
-                style={{ bottom: `${position}%` }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (isInView) onSelectItem(item)
+          <div className="timeline-bands">
+            {categories.length === 0 ? (
+              <div className="timeline-band" style={{ flex: 1, minHeight: 0 }}>
+                {itemsWithDt.map((item) => {
+                  const ts = toTimestamp(item.datetime)
+                  const position = ((ts - min) / range) * 100
+                  const isSelected = selectedItem?.id === item.id
+                  const isInView = position >= 0 && position <= 100
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`timeline-marker ${isSelected ? 'selected' : ''} ${!isInView ? 'timeline-marker-outside' : ''}`}
+                      style={{ bottom: `${position}%` }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (isInView) onSelectItem(item)
+                      }}
+                      title={`${item.title} — ${formatTimestamp(ts, scale)}`}
+                    >
+                      <span className="timeline-marker-dot" />
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+            categories.map((category) => (
+              <div
+                key={category}
+                className="timeline-band timeline-band-parallel"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
                 }}
-                title={`${item.title} — ${formatTimestamp(ts, scale)}`}
               >
-                <span className="timeline-marker-dot" />
-              </button>
-            )
-          })}
+                <span
+                  className="timeline-band-label"
+                  style={{ color: getCategoryColor(category) }}
+                >
+                  {category}
+                </span>
+                {itemsWithDt
+                  .filter((item) => getItemCategories(item).includes(category))
+                  .map((item) => {
+                    const ts = toTimestamp(item.datetime)
+                    const position = ((ts - min) / range) * 100
+                    const isSelected = selectedItem?.id === item.id
+                    const isInView = position >= 0 && position <= 100
+
+                    return (
+                      <button
+                        key={`${item.id}-${category}`}
+                        type="button"
+                        className={`timeline-marker ${isSelected ? 'selected' : ''} ${!isInView ? 'timeline-marker-outside' : ''}`}
+                        style={{
+                          bottom: `${position}%`,
+                          ['--marker-color']: getCategoryColor(category),
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (isInView) onSelectItem(item)
+                        }}
+                        title={`${item.title} — ${formatTimestamp(ts, scale)} (${category})`}
+                      >
+                        <span className="timeline-marker-dot" />
+                      </button>
+                    )
+                  })}
+              </div>
+            ))
+            )}
+          </div>
         </div>
-          <div
-            className={`timeline-lateral timeline-lateral-right ${lateralDrag ? 'timeline-lateral-dragging' : ''}`}
-            onMouseDown={handleLateralMouseDown}
-            title="Arrastra arriba/abajo para navegar en el tiempo"
-            role="button"
-            aria-label="Rueda de tiempo: arrastra para navegar"
-          />
         </div>
       </div>
       <div className="timeline-scales">
@@ -297,6 +313,16 @@ export default function InteractiveTimeline({
         <div className="timeline-legend timeline-legend-bottom">
           <span className="timeline-legend-label">{formatTimestamp(min, scale)}</span>
         </div>
+        {categories.length > 0 && (
+          <div className="timeline-category-legend">
+            {categories.map((cat) => (
+              <span key={cat} className="timeline-category-legend-item" title={cat}>
+                <span className="timeline-category-legend-dot" style={{ background: getCategoryColor(cat) }} />
+                <span className="timeline-category-legend-label">{cat}</span>
+              </span>
+            ))}
+          </div>
+        )}
         {isZoomed && (
           <button
             type="button"

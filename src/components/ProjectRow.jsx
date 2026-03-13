@@ -4,7 +4,9 @@ export default function ProjectRow({ item }) {
     <>
       <span className="project-date">{item.date}</span>
       <span className="project-title">{item.title ?? ''}</span>
-      <span className="project-category">{item.category}</span>
+      <span className="project-category">
+        {Array.isArray(item.category) ? item.category.join(' · ') : item.category}
+      </span>
       <span className="project-status">{status}</span>
     </>
   )
