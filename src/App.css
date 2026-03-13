@@ -146,6 +146,16 @@
   overflow-x: hidden;
 }
 
+.main-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
 /* Split layout: list left, detail right - fills all space */
 .main-split {
   display: flex;

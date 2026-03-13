@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { getViewFromHash, getRouteFromHash, VIEWS } from './constants'
-import { Header, Footer, FullListView, ThumbnailView } from './components'
-import {
-  InteractiveMap,
-  SoundAnalysis,
-  Interviews,
-  RadarSystems,
-  HistoricalTimeline,
-  Reflections,
-} from './pages'
+import { Header, Footer } from './components'
+import { Interviews, RadarSystems, HistoricalTimeline, Reflections } from './pages'
 import './App.css'
+
+const InteractiveMap = lazy(() => import('./pages/InteractiveMap'))
+const SoundAnalysis = lazy(() => import('./pages/SoundAnalysis'))
+const FullListView = lazy(() => import('./components/FullListView'))
+const ThumbnailView = lazy(() => import('./components/ThumbnailView'))
 
 const THEME_KEY = 'floarchive-theme'
 
@@ -74,7 +72,9 @@ export default function App() {
       <Header currentRoute={route} isThumbnailView={isThumbnailView} theme={theme} onThemeToggle={toggleTheme} />
 
       <main className="main">
-        {renderContent()}
+        <Suspense fallback={<div className="main-loading" aria-live="polite">Cargando…</div>}>
+          {renderContent()}
+        </Suspense>
       </main>
 
       <Footer />
