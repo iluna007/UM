@@ -98,20 +98,25 @@ function jitterCoordinates(lat, lng, seed) {
   return { lat: lat + jitterLat, lng: lng + jitterLng }
 }
 
-/** Pin SVG by source: 'airbnb' (casa), 'noticias' (documento), default (pin ubicación). */
+/** Pin SVG by source: 'airbnb' (casa), 'noticias' (documento), default (pin ubicación). Cache por (source, color) para crear marcadores más rápido. */
+const pinSvgCache = new Map()
 function getPinSvgBySource(source, color) {
   const safeColor = /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#95a5a6'
+  const key = `${source || 'default'}-${safeColor}`
+  if (pinSvgCache.has(key)) return pinSvgCache.get(key)
   const stroke = 'rgba(255,255,255,0.9)'
+  let svg
   if (source === 'airbnb') {
-    return `<svg class="map-marker-icon map-marker-icon-airbnb" viewBox="0 0 24 24" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.2" d="M12 2L3 10v12h6v-7h6v7h6V10L12 2z"/></svg>`
+    svg = `<svg class="map-marker-icon map-marker-icon-airbnb" viewBox="0 0 24 24" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.2" d="M12 2L3 10v12h6v-7h6v7h6V10L12 2z"/></svg>`
+  } else if (source === 'noticias') {
+    svg = `<svg class="map-marker-icon map-marker-icon-noticias" viewBox="0 0 24 24" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.2" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-5-5V3.5L18.5 9H11z"/></svg>`
+  } else if (source === 'google-review') {
+    svg = `<svg class="map-marker-icon" viewBox="0 0 24 36" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.5" d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0zm0 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>`
+  } else {
+    svg = `<svg class="map-marker-icon" viewBox="0 0 24 36" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.5" d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0zm0 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>`
   }
-  if (source === 'noticias') {
-    return `<svg class="map-marker-icon map-marker-icon-noticias" viewBox="0 0 24 24" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.2" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-5-5V3.5L18.5 9H11z"/></svg>`
-  }
-  if (source === 'google-review') {
-    return `<svg class="map-marker-icon" viewBox="0 0 24 36" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.5" d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0zm0 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>`
-  }
-  return `<svg class="map-marker-icon" viewBox="0 0 24 36" aria-hidden="true"><path fill="${safeColor}" stroke="${stroke}" stroke-width="1.5" d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0zm0 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>`
+  pinSvgCache.set(key, svg)
+  return svg
 }
 
 function createMapMarker(item, map, onSelect, options = {}) {
@@ -657,6 +662,7 @@ export default function InteractiveMap({ theme = 'light' }) {
     }
     map.setStyle(mapStyle)
     map.once('style.load', () => {
+      if (!mapRef.current) return
       const updateNoiseIfVisible = () => {
         if (visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise' || dataSourceRef.current === 'all') {
           updateNoiseHexLayer(map)
@@ -714,18 +720,18 @@ export default function InteractiveMap({ theme = 'light' }) {
         })
       })
 
-      const showNoise = visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise'
+      const showNoise = visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise' || dataSourceRef.current === 'all'
       if (showNoise) {
         ensureNoiseHexLayer(map, true)
         updateNoiseHexLayer(map)
       }
-      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex'
+      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex' || dataSourceRef.current === 'all'
       if (showGoogleHex) {
         ensureGoogleHexLayer(map, true)
         updateGoogleHexLayer(map)
       }
     })
-  }, [mapStyle, useJitter, itemsWithDatetimeAndCoords])
+  }, [mapStyle])
 
   useEffect(() => {
     const visibleIds = new Set(visibleItems.map((i) => i.id))
@@ -920,7 +926,7 @@ export default function InteractiveMap({ theme = 'light' }) {
   if (!MAPBOX_TOKEN) {
     return (
       <div className="interactive-map-page">
-        <p className="map-error">Mapbox token not configured. Add VITE_MAPBOX_TOKEN to .env</p>
+        <p className="map-error">Token de Mapbox no configurado. Añade VITE_MAPBOX_TOKEN al archivo .env</p>
       </div>
     )
   }
@@ -935,7 +941,7 @@ export default function InteractiveMap({ theme = 'light' }) {
     itemsWithDatetimeAndCoords.length > 0 ||
     (dataSource === 'noise' && hasNoiseData) ||
     (dataSource === 'google-review-hex' && hasGoogleHexData) ||
-    (dataSource === 'all' && (hasNoiseData || hasGoogleHexData))
+    (dataSource === 'all' && (itemsWithDatetimeAndCoords.length > 0 || hasNoiseData || hasGoogleHexData))
   if (!canShowMap) {
     return (
       <div className="interactive-map-page">
@@ -1287,7 +1293,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       </div>
       <div
         className={`interactive-map-container${!containerReady ? ' interactive-map-container-loading' : ''}`}
-        aria-label="Map area"
+        aria-label="Área del mapa"
       >
         {!containerReady && (
           <div className="interactive-map-loading-msg" aria-live="polite">
@@ -1314,7 +1320,7 @@ export default function InteractiveMap({ theme = 'light' }) {
             type="button"
             className="interactive-map-close"
             onClick={() => setSelectedItem(null)}
-            aria-label="Close detail panel"
+            aria-label="Cerrar panel de detalle"
           >
             ×
           </button>

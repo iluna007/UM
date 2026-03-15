@@ -3,10 +3,35 @@ import { getNoticiasSourceLinks } from '../data/noticias'
 import { getGoogleReviewSourceLinks } from '../data/googleReview'
 import { formatAssociationsDisplay } from '../utils/formatAssociations'
 
-/** Column keys to hide from table (noise columns) */
-const HIDE_KEYS = new Set(['col_0', 'col_1', 'col_2'].concat(
-  Array.from({ length: 30 }, (_, i) => `col_${i}`)
-))
+/** Column keys to hide from table (noise columns + coordenadas) */
+const HIDE_KEYS = new Set([
+  'col_0', 'col_1', 'col_2',
+  'latitude', 'longitude', 'lat', 'lng',
+  ...Array.from({ length: 30 }, (_, i) => `col_${i}`),
+])
+
+/** Orden y etiquetas de columnas por clave (solo las que queremos mostrar con nombre legible). */
+const COLUMN_LABELS = {
+  id: 'ID',
+  title: 'Título',
+  description: 'Descripción',
+  desrciption: 'Descripción',
+  date: 'Fecha',
+  'first review': 'Primera valoración',
+  location: 'Ubicación',
+  leq_mean: 'LAeq (dB)',
+  provincia: 'Provincia',
+  canton: 'Cantón',
+  weekKey: 'Semana',
+  rating: 'Valoración',
+  keywords: 'Palabras clave',
+  associations: 'Categoría',
+  sources: 'Fuentes',
+}
+
+function getColumnLabel(key) {
+  return COLUMN_LABELS[key] ?? key
+}
 
 function getDisplayKeys(events) {
   if (!events?.length) return []
@@ -18,7 +43,7 @@ function getDisplayKeys(events) {
     })
   })
   return Array.from(keys).sort((a, b) => {
-    const order = ['id', 'title', 'description', 'desrciption', 'date', 'first review', 'location', 'leq_mean', 'provincia', 'canton', 'latitude', 'longitude', 'lat', 'lng', 'weekKey']
+    const order = ['id', 'title', 'description', 'desrciption', 'date', 'first review', 'location', 'leq_mean', 'provincia', 'canton', 'weekKey', 'rating', 'keywords', 'associations', 'sources']
     const ia = order.indexOf(a)
     const ib = order.indexOf(b)
     if (ia !== -1 && ib !== -1) return ia - ib
@@ -50,7 +75,7 @@ function getSortValue(item, columnKey) {
 
 const EXTRA_COLS_MAX = 10
 
-export default function DataTableView({ events, sourceLabel, theme = 'light' }) {
+export default function DataTableView({ events, sourceLabel, sourceKey, theme = 'light' }) {
   const [sortColumn, setSortColumn] = useState('date')
   const [sortDirection, setSortDirection] = useState('desc')
   const [expandedId, setExpandedId] = useState(null)
@@ -61,8 +86,25 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
     [displayKeys]
   )
 
+  const otherSourcePrefixes = useMemo(() => {
+    if (!sourceKey) return []
+    const all = ['airbnb-', 'google-review-', 'noticias-', 'noise-']
+    const mine = sourceKey === 'noise' ? 'noise-' : `${sourceKey}-`
+    return all.filter((p) => p !== mine)
+  }, [sourceKey])
+
   const allRows = useMemo(() => {
-    const list = Array.isArray(events) ? [...events] : []
+    let list = Array.isArray(events) ? [...events] : []
+    if (sourceKey) {
+      list = list.filter((item) => {
+        if (!item || item.source !== sourceKey) return false
+        const id = item.id != null ? String(item.id) : ''
+        for (const other of otherSourcePrefixes) {
+          if (id.startsWith(other)) return false
+        }
+        return true
+      })
+    }
     if (!sortColumn) return list
     return list.sort((a, b) => {
       const va = getSortValue(a, sortColumn)
@@ -72,7 +114,7 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
       else cmp = String(va).localeCompare(String(vb), undefined, { numeric: true })
       return sortDirection === 'asc' ? cmp : -cmp
     })
-  }, [events, sortColumn, sortDirection])
+  }, [events, sourceKey, otherSourcePrefixes, sortColumn, sortDirection])
 
   const hasExpandableData = allRows.some((e) => e.raw && Object.keys(e.raw).length > 0)
 
@@ -96,15 +138,98 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
     )
   }
 
+  const isNoiseTable = sourceKey === 'noise'
+  const allowedNoiseRawKeys = useMemo(() => new Set(['location', 'leq_mean', 'lat', 'lng', 'weekKey', 'date']), [])
+  const noiseRows = useMemo(() => {
+    if (!isNoiseTable) return []
+    return allRows.filter((item) => {
+      if (!item || item.source !== 'noise' || !String(item.id || '').startsWith('noise-')) return false
+      const raw = item.raw || {}
+      const rawKeys = Object.keys(raw)
+      const onlyNoiseKeys = rawKeys.every((k) => allowedNoiseRawKeys.has(k))
+      if (!onlyNoiseKeys) return false
+      const title = (item.title || '').trim()
+      const noiseTitlePattern = /^.+\s·\s[\d.]+\s*dB$/i
+      return !title || noiseTitlePattern.test(title)
+    })
+  }, [isNoiseTable, allRows, allowedNoiseRawKeys])
+
+  if (isNoiseTable && noiseRows.length === 0) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm text-[var(--color-text-muted)]">0 registros</span>
+        </div>
+        <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No hay datos de ruido para mostrar.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-sm text-[var(--color-text-muted)]">{allRows.length} registros</span>
+        <span className="text-sm text-[var(--color-text-muted)]">{isNoiseTable ? noiseRows.length : allRows.length} registros</span>
       </div>
       <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg)]">
+        {isNoiseTable ? (
+          <table className="data-table" role="grid">
+            <thead>
+              <tr>
+                <th className="data-table-col-num" title="Número de fila">N.º</th>
+                <th
+                  className="data-table-col-date data-table-col-sortable"
+                  onClick={() => handleSort('date')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('date') } }}
+                  role="button"
+                  tabIndex={0}
+                  title="Ordenar por fecha"
+                >
+                  Fecha {sortColumn === 'date' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                </th>
+                <th
+                  className="data-table-col-title data-table-col-sortable"
+                  onClick={() => handleSort('location')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('location') } }}
+                  role="button"
+                  tabIndex={0}
+                  title="Ordenar por lugar"
+                >
+                  Lugar {sortColumn === 'location' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                </th>
+                <th
+                  className="data-table-col-extra data-table-col-sortable"
+                  onClick={() => handleSort('leq_mean')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('leq_mean') } }}
+                  role="button"
+                  tabIndex={0}
+                  title="Ordenar por dB"
+                >
+                  dB {sortColumn === 'leq_mean' && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {noiseRows.map((item, index) => {
+                const raw = item.raw || item
+                const location = raw.location ?? item.title?.split(' · ')[0] ?? '—'
+                const db = raw.leq_mean != null ? String(raw.leq_mean) : '—'
+                return (
+                  <tr key={`noise-${item.id}`} className="data-table-row">
+                    <td className="data-table-col-num">{index + 1}</td>
+                    <td className="data-table-col-date">{item.date || '—'}</td>
+                    <td className="data-table-col-title">{location}</td>
+                    <td className="data-table-col-extra">{db}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : (
         <table className="data-table" role="grid">
           <thead>
             <tr>
+              <th className="data-table-col-num" title="Número de fila">N.º</th>
+              <th className="data-table-col-source" title="Fuente del registro">Fuente</th>
               {hasExpandableData && <th className="data-table-col-expand" aria-label="Expandir" />}
               <th
                 className="data-table-col-date data-table-col-sortable"
@@ -134,19 +259,21 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(k) } }}
                   role="button"
                   tabIndex={0}
-                  title={`Ordenar por ${k}`}
+                  title={`Ordenar por ${getColumnLabel(k)}`}
                 >
-                  {k} {sortColumn === k && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
+                  {getColumnLabel(k)} {sortColumn === k && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {allRows.map((item) => {
+            {allRows.map((item, index) => {
               const raw = item.raw || item
               const isExpanded = expandedId === item.id
+              const rowKey = sourceKey ? `${sourceKey}-${item.id}` : item.id
+              const sourceLabel = item.source === 'airbnb' ? 'Airbnb' : item.source === 'google-review' ? 'Google Review' : item.source === 'noticias' ? 'Noticias' : item.source === 'noise' ? 'Ruido' : item.source || '—'
               return (
-                <Fragment key={item.id}>
+                <Fragment key={rowKey}>
                   <tr
                     className={`data-table-row ${isExpanded ? 'expanded' : ''}`}
                     onClick={() => setExpandedId(isExpanded ? null : item.id)}
@@ -160,6 +287,8 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
                     }}
                     aria-expanded={isExpanded}
                   >
+                    <td className="data-table-col-num">{index + 1}</td>
+                    <td className="data-table-col-source">{sourceLabel}</td>
                     {hasExpandableData && (
                       <td className="data-table-col-expand">
                         <span className="data-table-expand-icon" aria-hidden>{isExpanded ? '▼' : '▶'}</span>
@@ -207,7 +336,7 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
                           <dl className="data-table-detail-fields">
                             {Object.entries(raw).filter(([k, v]) => !HIDE_KEYS.has(k) && (v != null && v !== '')).map(([k, v]) => (
                               <div key={k} className="data-table-detail-row">
-                                <dt>{k}</dt>
+                                <dt>{getColumnLabel(k)}</dt>
                                 <dd className={k === 'associations' ? 'detail-associations-stars' : ''}>{formatCellValue(v, item, k, false)}</dd>
                               </div>
                             ))}
@@ -239,6 +368,7 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
             })}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 export default function About() {
   return (
     <div className="page about">
-      <h1 className="page-title">About</h1>
+      <h1 className="page-title">Acerca de</h1>
       <p className="about-credits">
         © 2026{' '}
         <a href="" target="_blank" rel="noopener noreferrer">

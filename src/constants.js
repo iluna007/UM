@@ -1,8 +1,8 @@
 export const NAV_ITEMS = [
-  { key: 'archive', label: 'Archive', hash: '#pages' },
-  { key: 'map', label: 'Interactive Map', hash: '#map' },
-  { key: 'reflections', label: 'Reflections', hash: '#reflections' },
-  { key: 'about', label: 'About', hash: '#about' },
+  { key: 'archive', label: 'Archivo', hash: '#pages' },
+  { key: 'map', label: 'Mapa interactivo', hash: '#map' },
+  { key: 'reflections', label: 'Reflexiones', hash: '#reflections' },
+  { key: 'about', label: 'Acerca de', hash: '#about' },
 ]
 
 export function getRouteFromHash() {

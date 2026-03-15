@@ -37,7 +37,7 @@ export default function MapLayersPanel({ layers = [], visibleLayerIds = [], onTo
       </button>
       {open && (
         <div className="map-layers-panel" role="dialog" aria-label="Capas del mapa">
-          <div className="map-layers-panel-title">Layers</div>
+          <div className="map-layers-panel-title">Capas</div>
           <ul className="map-layers-list">
             {layers.map((layer) => {
               const isVisible = visibleLayerIds.includes(layer.id)

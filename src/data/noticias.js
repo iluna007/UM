@@ -10,7 +10,32 @@ export const noticiasSheets = noticiasData.sheets || {}
 export const noticiasSheetNames = noticiasData.sheetNames || []
 
 const events = Array.isArray(noticiasData.sheets?.events) ? noticiasData.sheets.events : []
-export const noticiasEvents = normalizeEvents(events, 'noticias')
+const allNoticiasEvents = normalizeEvents(events, 'noticias')
+
+/** Excluye registros sin información (filas vacías o solo con id). */
+function hasNoticiasContent(event) {
+  if (!event) return false
+  const raw = event.raw || event
+  const title = (event.title || '').trim()
+  const description = (event.description || '').trim()
+  const idStr = event.id ? String(event.id).replace(/^noticias-/, '') : ''
+  if (title && title !== idStr && title.length > 1) return true
+  if (description.length > 0) return true
+  if (event.coordinates && event.coordinates.lat != null && event.coordinates.lng != null) return true
+  const associations = (raw.associations != null && String(raw.associations).trim() !== '') || false
+  if (associations) return true
+  const sources = (raw.sources != null && String(raw.sources).trim() !== '') || false
+  if (sources) return true
+  const rawTitle = (raw.title != null && String(raw.title).trim() !== '') || false
+  if (rawTitle) return true
+  const rawDesc = (raw.description != null && String(raw.description).trim() !== '') || (raw.desrciption != null && String(raw.desrciption).trim() !== '') || false
+  if (rawDesc) return true
+  if (raw.location != null && String(raw.location).trim() !== '') return true
+  if (raw.keywords != null && String(raw.keywords).trim() !== '') return true
+  return false
+}
+
+export const noticiasEvents = allNoticiasEvents.filter(hasNoticiasContent)
 
 /** Events with coordinates for map/timeline */
 export const noticiasEventsWithCoords = noticiasEvents.filter(

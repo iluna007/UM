@@ -968,6 +968,21 @@
   text-align: center;
 }
 
+.data-table-col-num {
+  width: 2.5rem;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table-col-source {
+  white-space: nowrap;
+  width: 6rem;
+  font-size: 0.8em;
+  color: var(--color-text-muted);
+}
+
 .data-table-expand-icon {
   font-size: 0.65rem;
   color: var(--color-text-muted);
