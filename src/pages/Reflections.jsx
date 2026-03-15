@@ -1,7 +1,7 @@
 export default function Reflections() {
   return (
     <div className="page reflections">
-      <h1 className="page-title">Reflexiones</h1>
+      <h1 className="page-title">Análisis</h1>
       <p className="page-description">
         Personal insights and reflections.
       </p>
