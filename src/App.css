@@ -45,6 +45,9 @@
 
 .bg-color-picker-wrap {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
 }
 
 .bg-color-toggle {
@@ -77,6 +80,38 @@
   font-size: 1.25rem;
 }
 
+.bg-color-native-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-color-default-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: opacity 0.2s, background-color 0.2s;
+  font-family: inherit;
+}
+
+.bg-color-default-btn:hover {
+  opacity: 0.8;
+  background-color: var(--color-bg-secondary);
+}
+
+.bg-color-default-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .bg-color-picker {
   position: absolute;
   top: 100%;
@@ -105,6 +140,31 @@
   text-align: center;
 }
 
+.bg-color-native-row {
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.bg-color-native-input {
+  width: 100%;
+  max-width: 200px;
+  height: 80px;
+  padding: 4px;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bg-color-native-input::-webkit-color-swatch-wrapper {
+  padding: 4px;
+}
+
+.bg-color-native-input::-webkit-color-swatch {
+  border: 2px solid var(--color-border);
+}
+
 .bg-color-wheel-row {
   display: flex;
   align-items: center;
@@ -121,12 +181,31 @@
   flex-shrink: 0;
 }
 
+.bg-color-wheel-full {
+  width: 180px;
+  height: 180px;
+}
+
 .bg-color-wheel-inner {
   position: absolute;
-  inset: 10px;
-  background: var(--color-bg-secondary);
+  inset: 12px;
   border: 2px solid var(--color-border);
   pointer-events: none;
+}
+
+.bg-color-wheel-full .bg-color-wheel-inner {
+  border-radius: 50%;
+}
+
+.bg-color-wheel-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-border);
+  background: #fff;
+  transform: translate(-50%, 50%);
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 .bg-color-wheel-handle {
