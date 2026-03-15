@@ -7,6 +7,22 @@ export const CATEGORY_COLORS = {
   category3: '#2ecc71',
   category4: '#f39c12',
   category5: '#9b59b6',
+  airbnb: '#ff5a5f',
+  'airbnb-1': '#c0392b',
+  'airbnb-2': '#e67e22',
+  'airbnb-3': '#f1c40f',
+  'airbnb-4': '#27ae60',
+  'airbnb-5': '#1e8449',
+  'google-review': '#4285f4',
+  noticias: '#34a853',
+  asc1: '#e74c3c',
+  asc2: '#9b59b6',
+  asc3: '#f39c12',
+  asc4: '#3498db',
+  asc5: '#1abc9c',
+  asc6: '#2ecc71',
+  asc7: '#e67e22',
+  asc8: '#34495e',
 }
 
 const DEFAULT_COLOR = '#95a5a6'

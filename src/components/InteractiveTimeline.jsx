@@ -26,6 +26,8 @@ export default function InteractiveTimeline({
   viewRange,
   onViewRangeChange,
   fullRange,
+  categoryOrder = null,
+  categoryLabels = null,
 }) {
   const trackRef = useRef(null)
   const onViewRangeChangeRef = useRef(onViewRangeChange)
@@ -178,11 +180,16 @@ export default function InteractiveTimeline({
 
   const itemsWithDt = items.filter((i) => i.datetime && toTimestamp(i.datetime) > 0)
   const categories = useMemo(() => {
+    if (categoryOrder && Array.isArray(categoryOrder) && categoryOrder.length > 0) {
+      return categoryOrder
+    }
     const fromItems = getUniqueCategories(itemsWithDt)
     return fromItems.length >= ALL_CATEGORIES.length
       ? fromItems
       : [...new Set([...ALL_CATEGORIES, ...fromItems])].sort()
-  }, [itemsWithDt])
+  }, [itemsWithDt, categoryOrder])
+
+  const getCategoryLabel = (cat) => (categoryLabels && categoryLabels[cat]) || cat
 
   return (
     <div className="interactive-timeline">
@@ -255,7 +262,7 @@ export default function InteractiveTimeline({
                   className="timeline-band-label"
                   style={{ color: getCategoryColor(category) }}
                 >
-                  {category}
+                  {getCategoryLabel(category)}
                 </span>
                 {itemsWithDt
                   .filter((item) => getItemCategories(item).includes(category))
@@ -278,7 +285,7 @@ export default function InteractiveTimeline({
                           e.stopPropagation()
                           if (isInView) onSelectItem(item)
                         }}
-                        title={`${item.title} — ${formatTimestamp(ts, scale)} (${category})`}
+                        title={`${item.title} — ${formatTimestamp(ts, scale)} (${getCategoryLabel(category)})`}
                       >
                         <span className="timeline-marker-dot" />
                       </button>
@@ -312,9 +319,9 @@ export default function InteractiveTimeline({
         {categories.length > 0 && (
           <div className="timeline-category-legend">
             {categories.map((cat) => (
-              <span key={cat} className="timeline-category-legend-item" title={cat}>
+              <span key={cat} className="timeline-category-legend-item" title={getCategoryLabel(cat)}>
                 <span className="timeline-category-legend-dot" style={{ background: getCategoryColor(cat) }} />
-                <span className="timeline-category-legend-label">{cat}</span>
+                <span className="timeline-category-legend-label">{getCategoryLabel(cat)}</span>
               </span>
             ))}
           </div>

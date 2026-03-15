@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { archive } from '../data/archive'
 import { getSortedArchive } from '../utils/sortArchive'
+
+const archive = []
 import TableHeader from './TableHeader'
 import ProjectItemThumbnail from './ProjectItemThumbnail'
 import DetailPanel from './DetailPanel'

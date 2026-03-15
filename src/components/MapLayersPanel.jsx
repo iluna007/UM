@@ -19,7 +19,7 @@ export default function MapLayersPanel({ layers = [], visibleLayerIds = [], onTo
       if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false)
     }
     document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutcapside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [open])
 
   return (
@@ -30,8 +30,8 @@ export default function MapLayersPanel({ layers = [], visibleLayerIds = [], onTo
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="true"
-        aria-label={open ? 'Close layers' : 'Open layers map '}
-        title="Layesr maps"
+        aria-label={open ? 'Cerrar capas' : 'Abrir capas del mapa'}
+        title="Capas del mapa"
       >
         <LayersIcon />
       </button>

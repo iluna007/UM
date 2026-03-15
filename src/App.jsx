@@ -2,13 +2,11 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { getViewFromHash, getRouteFromHash, VIEWS } from './constants'
 import { Header } from './components'
 import { getStoredBgColor, setStoredBgColor } from './components/BackgroundColorPicker'
-import { Interviews, RadarSystems, HistoricalTimeline, Reflections, About } from './pages'
+import { Reflections, About } from './pages'
 import './App.css'
 
 const InteractiveMap = lazy(() => import('./pages/InteractiveMap'))
-const SoundAnalysis = lazy(() => import('./pages/SoundAnalysis'))
-const FullListView = lazy(() => import('./components/FullListView'))
-const ThumbnailView = lazy(() => import('./components/ThumbnailView'))
+const ArchiveView = lazy(() => import('./components/ArchiveView'))
 
 const THEME_KEY = 'marquinaurbana-theme'
 
@@ -66,18 +64,10 @@ export default function App() {
 
   function renderContent() {
     if (route === 'map') return <InteractiveMap theme={theme} />
-    if (route === 'sound') return <SoundAnalysis />
-    if (route === 'interviews') return <Interviews />
-    if (route === 'radar') return <RadarSystems />
-    if (route === 'timeline') return <HistoricalTimeline />
     if (route === 'reflections') return <Reflections />
     if (route === 'about') return <About />
 
-    return isThumbnailView ? (
-      <ThumbnailView selectedId={selectedId} onSelect={selectProject} theme={theme} />
-    ) : (
-      <FullListView onProjectClick={openInThumbnailView} />
-    )
+    return <ArchiveView theme={theme} />
   }
 
   return (

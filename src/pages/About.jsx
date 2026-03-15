@@ -4,8 +4,8 @@ export default function About() {
       <h1 className="page-title">About</h1>
       <p className="about-credits">
         © 2026{' '}
-        <a href="https://florence-to.com/" target="_blank" rel="noopener noreferrer">
-          Florence To
+        <a href="" target="_blank" rel="noopener noreferrer">
+          Daniel Quirós
         </a>
         . All rights reserved. · Web development by{' '}
         <a href="https://ikerluna.netlify.app/" target="_blank" rel="noopener noreferrer">

@@ -7,10 +7,6 @@ export const ROUTES = {
   archive: 'pages',
   fullList: 'full-list-view',
   map: 'map',
-  sound: 'sound',
-  interviews: 'interviews',
-  radar: 'radar',
-  timeline: 'timeline',
   reflections: 'reflections',
   about: 'about',
 }
@@ -18,10 +14,6 @@ export const ROUTES = {
 export const NAV_ITEMS = [
   { key: 'archive', label: 'Archive', hash: '#pages' },
   { key: 'map', label: 'Interactive Map', hash: '#map' },
-  { key: 'sound', label: 'Sound Analysis', hash: '#sound' },
-  { key: 'interviews', label: 'Interviews', hash: '#interviews' },
-  { key: 'radar', label: 'Radar Systems', hash: '#radar' },
-  { key: 'timeline', label: 'Historical Timeline', hash: '#timeline' },
   { key: 'reflections', label: 'Reflections', hash: '#reflections' },
   { key: 'about', label: 'About', hash: '#about' },
 ]
@@ -35,10 +27,6 @@ export function getRouteFromHash() {
   const hash = window.location.hash.slice(1) || 'pages'
   if (hash === 'full-list-view') return 'fullList'
   if (hash === 'map') return 'map'
-  if (hash === 'sound') return 'sound'
-  if (hash === 'interviews') return 'interviews'
-  if (hash === 'radar') return 'radar'
-  if (hash === 'timeline') return 'timeline'
   if (hash === 'reflections') return 'reflections'
   if (hash === 'about') return 'about'
   return 'archive'

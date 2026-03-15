@@ -11,13 +11,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "data:import": "node src/data/csv-to-archive.js"
+    "data:import": "node src/data/csv-to-archive.js",
+    "data:xlsx": "python scripts/xlsx-to-json.py"
   },
   "dependencies": {
+    "h3-js": "^4.4.0",
     "mapbox-gl": "^3.20.0",
     "ml-fft": "^1.3.5",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^3.8.0"
   },
   "optionalDependencies": {
     "@esbuild/linux-x64": "0.27.3",
