@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { getViewFromHash, getRouteFromHash, VIEWS } from './constants'
+import { getRouteFromHash } from './constants'
 import { Header } from './components'
 import { getStoredBgColor, setStoredBgColor } from './components/BackgroundColorPicker'
 import { Reflections, About } from './pages'
@@ -17,9 +17,7 @@ function getInitialTheme() {
 }
 
 export default function App() {
-  const [view, setView] = useState(getViewFromHash)
   const [route, setRoute] = useState(getRouteFromHash)
-  const [selectedId, setSelectedId] = useState(null)
   const [theme, setTheme] = useState(getInitialTheme)
   const [bgColor, setBgColor] = useState(getStoredBgColor())
 
@@ -43,36 +41,21 @@ export default function App() {
   }
 
   useEffect(() => {
-    const handleHashChange = () => {
-      setView(getViewFromHash())
-      setRoute(getRouteFromHash())
-    }
+    const handleHashChange = () => setRoute(getRouteFromHash())
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
-
-  const selectProject = (id) => {
-    setSelectedId((prev) => (prev === id ? null : id))
-  }
-
-  const openInThumbnailView = (id) => {
-    setSelectedId(id)
-    window.location.hash = '#pages'
-  }
-
-  const isThumbnailView = view === VIEWS.thumbnail
 
   function renderContent() {
     if (route === 'map') return <InteractiveMap theme={theme} />
     if (route === 'reflections') return <Reflections />
     if (route === 'about') return <About />
-
     return <ArchiveView theme={theme} />
   }
 
   return (
     <div className="app">
-      <Header currentRoute={route} isThumbnailView={isThumbnailView} theme={theme} onThemeToggle={toggleTheme} bgColor={bgColor} onBgColorChange={setBgColor} />
+      <Header currentRoute={route} theme={theme} onThemeToggle={toggleTheme} bgColor={bgColor} onBgColorChange={setBgColor} />
 
       <main className="main">
         <Suspense fallback={<div className="main-loading" aria-live="polite">Cargando…</div>}>

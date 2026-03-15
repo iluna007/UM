@@ -87,23 +87,21 @@ export default function DataTableView({ events, sourceLabel, theme = 'light' }) 
 
   if (allRows.length === 0) {
     return (
-      <div className="data-table-view">
-        <div className="data-table-toolbar">
-          <span className="data-table-source-badge">{sourceLabel}</span>
-          <span className="data-table-count">0 registros</span>
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm text-[var(--color-text-muted)]">0 registros</span>
         </div>
-        <p className="data-table-empty">No hay datos para mostrar en esta fuente.</p>
+        <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No hay datos para mostrar en esta fuente.</p>
       </div>
     )
   }
 
   return (
-    <div className="data-table-view">
-      <div className="data-table-toolbar">
-        <span className="data-table-source-badge">{sourceLabel}</span>
-        <span className="data-table-count">{allRows.length} registros</span>
+    <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <span className="text-sm text-[var(--color-text-muted)]">{allRows.length} registros</span>
       </div>
-      <div className="data-table-scroll">
+      <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg)]">
         <table className="data-table" role="grid">
           <thead>
             <tr>

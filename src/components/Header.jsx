@@ -1,6 +1,6 @@
 import MainNav from './MainNav'
 
-export default function Header({ currentRoute, isThumbnailView, theme, onThemeToggle, bgColor, onBgColorChange }) {
+export default function Header({ currentRoute, theme, onThemeToggle, bgColor, onBgColorChange }) {
   return (
     <header className="header">
       <MainNav
