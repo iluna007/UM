@@ -5,7 +5,7 @@ export default function About() {
       <p className="about-credits">
         © 2026{' '}
         <a href="https://florence-to.com/" target="_blank" rel="noopener noreferrer">
-          Florence
+          Florence To
         </a>
         . All rights reserved. · Web development by{' '}
         <a href="https://ikerluna.netlify.app/" target="_blank" rel="noopener noreferrer">
