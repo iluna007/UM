@@ -1,0 +1,204 @@
+# Marquina Urbana (UM)
+
+Aplicación web para visualizar y analizar datos urbanos: alojamientos (Airbnb), valoraciones (Google Review), noticias, y mediciones de ruido (NoiseCapture) en la zona de los parques Morazán, San Pedro y Tres Ríos. Incluye mapa interactivo, tablas de datos y gráficos de análisis.
+
+---
+
+## Características
+
+- **Data**: Tablas filtradas por fuente (Airbnb, Google Review, Noticias, Ruido) con ordenación, detalle expandible y columnas traducidas.
+- **Mapa interactivo**: Vista con pins por fuente, hexágonos H3 para ruido y valoraciones, capas GeoJSON y timeline por fechas.
+- **Análisis**: Página de análisis y reflexiones sobre los datos.
+- **Acerca de**: Información del proyecto.
+- Tema claro/oscuro (persistido en `localStorage`).
+- Diseño responsive con navegación por hash (`#pages`, `#map`, `#reflections`, `#about`).
+
+---
+
+## Requisitos
+
+- **Node.js** 20.x (recomendado; el proyecto indica `engines.node: "20.x"`).
+- **npm** (o yarn/pnpm).
+- Para importar datos desde Excel: **Python 3** y **openpyxl** (`pip install openpyxl`).
+- **Token de Mapbox** (gratuito) para el mapa: [https://account.mapbox.com/](https://account.mapbox.com/).
+
+---
+
+## Instalación
+
+```bash
+git clone <url-del-repositorio>
+cd UM
+npm install
+```
+
+---
+
+## Variables de entorno
+
+Crea un archivo `.env` en la raíz del proyecto (puedes copiar `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+Edita `.env` y define:
+
+| Variable | Descripción |
+|----------|-------------|
+| `VITE_MAPBOX_TOKEN` | Token público de Mapbox. Sin él, el mapa mostrará un mensaje pidiendo configurarlo. |
+
+Obtén el token en [Mapbox](https://account.mapbox.com/access-tokens/).
+
+---
+
+## Scripts disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Arranca el servidor de desarrollo (Vite). |
+| `npm run build` | Genera la build de producción en `dist/`. |
+| `npm run preview` | Sirve la carpeta `dist/` para probar la build. |
+| `npm run lint` | Ejecuta ESLint. |
+| `npm run data:import` | Convierte `src/data/archive.csv` en `src/data/archive.js` (ver [Datos: CSV](#datos-csv-archive)). |
+| `npm run data:xlsx` | Genera `airbnb.json`, `google-review.json` y `noticias.json` desde los XLSX (ver [Datos: Excel](#datos-excel)). |
+
+---
+
+## Uso del código
+
+### Desarrollo
+
+```bash
+npm run dev
+```
+
+Abre en el navegador la URL que indique Vite (por ejemplo `http://localhost:5173`). La app usa rutas por hash:
+
+- `#pages` → Data (tablas por fuente).
+- `#map` → Mapa interactivo.
+- `#reflections` → Análisis.
+- `#about` → Acerca de.
+
+### Producción
+
+```bash
+npm run build
+npm run preview
+```
+
+Los estáticos quedan en `dist/`. Despliega `dist/` en cualquier estático o en un servidor que sirva SPA por índice.
+
+---
+
+## Datos
+
+La app consume datos desde:
+
+1. **JSON en `src/data/`**  
+   - `airbnb.json`, `google-review.json`, `noticias.json`: generados desde Excel (ver más abajo).  
+   - Contienen hojas (events, sources, associations) normalizadas para mapa, tablas y timeline.
+
+2. **Ruido (NoiseCapture)**  
+   - GeoJSON en `src/data/TRACKS/` (MORAZAN, SAN PEDRO, TRES RIOS).  
+   - Se cargan con `import.meta.glob` en `tracksLoader.js` para hexágonos y tabla Ruido.
+
+3. **CSV de archivo legacy**  
+   - `archive.csv` → `archive.js` con `npm run data:import` (opcional si usas solo las fuentes anteriores).
+
+### Datos: Excel
+
+Para regenerar los JSON a partir de hojas de cálculo:
+
+1. Coloca en la raíz del proyecto (o en la ruta que use el script):
+   - `Airbnb.xlsx`
+   - `Google Review.xlsx`
+   - `Noticias.xlsx`
+
+2. Instala dependencia Python:
+
+   ```bash
+   pip install openpyxl
+   ```
+
+3. Desde la raíz del proyecto:
+
+   ```bash
+   npm run data:xlsx
+   ```
+
+   o:
+
+   ```bash
+   python scripts/xlsx-to-json.py
+   ```
+
+   Se generan/actualizan:
+
+   - `src/data/airbnb.json`
+   - `src/data/google-review.json`
+   - `src/data/noticias.json`
+
+La estructura esperada por el código (events, sources, associations) está definida en los módulos `src/data/airbnb.js`, `src/data/googleReview.js` y `src/data/noticias.js`, que normalizan los JSON con `normalizeEvents()`.
+
+### Datos: CSV (archive)
+
+Si usas el flujo legacy con CSV:
+
+1. Edita o genera `src/data/archive.csv` (por ejemplo exportando desde Google Sheets).
+2. Ejecuta:
+
+   ```bash
+   npm run data:import
+   ```
+
+   Se crea/actualiza `src/data/archive.js`. Más detalle en `src/data/README.md`.
+
+---
+
+## Estructura del proyecto (resumida)
+
+```
+UM/
+├── index.html
+├── package.json
+├── vite.config.js
+├── .env.example
+├── scripts/
+│   └── xlsx-to-json.py      # Excel → JSON (Airbnb, Google Review, Noticias)
+├── src/
+│   ├── main.jsx
+│   ├── App.jsx
+│   ├── index.css             # Tailwind + variables CSS y tema
+│   ├── constants.js          # NAV_ITEMS, getRouteFromHash
+│   ├── components/          # Header, MainNav, ArchiveView, DataTableView, etc.
+│   ├── pages/                # InteractiveMap, Reflections, About
+│   ├── data/
+│   │   ├── airbnb.js
+│   │   ├── googleReview.js
+│   │   ├── noticias.js
+│   │   ├── externalData.js   # Agregación de fuentes para mapa/Data
+│   │   ├── tracksLoader.js   # Carga de TRACKS (ruido)
+│   │   ├── csv-to-archive.js
+│   │   ├── *.json            # airbnb, google-review, noticias (generados)
+│   │   └── TRACKS/           # GeoJSON por parque
+│   └── utils/                # normalizeExternalData, datetime, etc.
+└── public/
+```
+
+---
+
+## Stack técnico
+
+- **React** 19  
+- **Vite** 7  
+- **Tailwind CSS** 4  
+- **Mapbox GL JS** (mapa)  
+- **Recharts** (gráficos)  
+- **h3-js** (hexágonos H3 en el mapa)
+
+---
+
+## Licencia
+
+Proyecto privado. Consulta el repositorio o a los mantenedores para condiciones de uso.
