@@ -10,7 +10,7 @@ const SoundAnalysis = lazy(() => import('./pages/SoundAnalysis'))
 const FullListView = lazy(() => import('./components/FullListView'))
 const ThumbnailView = lazy(() => import('./components/ThumbnailView'))
 
-const THEME_KEY = 'floarchive-theme'
+const THEME_KEY = 'marquinaurbana-theme'
 
 function getInitialTheme() {
   const saved = localStorage.getItem(THEME_KEY)

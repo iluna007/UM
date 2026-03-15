@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 
-const BG_COLOR_KEY = 'floarchive-bg-color'
+const BG_COLOR_KEY = 'marquinaurbana-bg-color'
 const DEFAULT_LABEL = 'Default'
 
 function normalizeHex(input) {
