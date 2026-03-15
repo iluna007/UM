@@ -1,5 +1,5 @@
 export const NAV_ITEMS = [
-  { key: 'archive', label: 'Archivo', hash: '#pages' },
+  { key: 'archive', label: 'Data', hash: '#pages' },
   { key: 'map', label: 'Mapa interactivo', hash: '#map' },
   { key: 'reflections', label: 'Reflexiones', hash: '#reflections' },
   { key: 'about', label: 'Acerca de', hash: '#about' },
