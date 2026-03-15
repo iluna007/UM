@@ -1127,6 +1127,13 @@
   gap: 1rem;
   padding: 0.5rem 0;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.map-all-panel .interactive-timeline {
+  flex: 1;
+  min-height: 200px;
 }
 
 .map-all-intro {
@@ -1134,6 +1141,18 @@
   color: var(--color-text-muted);
   margin: 0 0 0.5rem 0;
   line-height: 1.4;
+}
+
+.map-all-legends-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.map-all-legends-row .map-noise-legend {
+  flex: 1;
+  min-width: 0;
 }
 
 .map-all-legend {
@@ -2101,6 +2120,122 @@
   max-width: 100%;
   pointer-events: none;
   z-index: 4;
+}
+
+/* Todo map: compact timeline – full height, toolbar for scale + range, labels vertical */
+.interactive-timeline--compact {
+  flex-direction: column;
+  min-height: 0;
+}
+
+.interactive-timeline--compact .timeline-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.interactive-timeline--compact .timeline-track-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.timeline-compact-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.timeline-compact-scales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.timeline-compact-scale-btn {
+  font-family: inherit;
+  font-size: 0.65rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.timeline-compact-scale-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.timeline-compact-scale-btn.active {
+  background: var(--color-text-muted);
+  color: var(--color-bg);
+  border-color: var(--color-text-muted);
+}
+
+.timeline-compact-range {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.timeline-compact-reset {
+  font-family: inherit;
+  font-size: 0.65rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.timeline-compact-reset:hover {
+  color: var(--color-text);
+}
+
+/* Vertical labels per lane – ancho suficiente para leer títulos completos (ej. Positivo) */
+.interactive-timeline--compact .timeline-band-label {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3.2em;
+  min-width: 3.2em;
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-orientation: mixed;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+  padding-left: 0.15rem;
+  box-sizing: border-box;
+}
+
+.interactive-timeline--compact .timeline-band {
+  padding-left: 3.2em;
+  box-sizing: border-box;
+}
+
+.interactive-timeline--compact .timeline-band .timeline-marker {
+  left: calc(3.2em + (100% - 3.2em) / 2);
+  transform: translate(-50%, 50%);
 }
 
 .timeline-marker-dot {

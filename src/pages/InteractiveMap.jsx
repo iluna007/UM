@@ -893,6 +893,28 @@ export default function InteractiveMap({ theme = 'light' }) {
     }
   }, [])
 
+  /** Etiquetas para timeline Todo: sin repetir títulos (prefijo Noticias/Google si coincide). */
+  const allTimelineCategoryLabels = useMemo(() => {
+    const out = {}
+    const usedTitles = new Set()
+    AIRBNB_STAR_ASSOCIATIONS.forEach((a) => {
+      const t = (a.title || a.id || '').trim() || a.id
+      out[a.id] = t
+      if (t) usedTitles.add(t)
+    })
+    NOTICIAS_ASSOCIATIONS.forEach((a) => {
+      const t = (a.title || a.id || '').trim()
+      out[a.id] = t && usedTitles.has(t) ? `Noticias: ${t}` : t
+      if (t) usedTitles.add(out[a.id])
+    })
+    GOOGLE_REVIEW_ASSOCIATIONS.forEach((a) => {
+      const t = (a.title || a.id || '').trim()
+      out[a.id] = t && usedTitles.has(t) ? `Google: ${t}` : t
+      if (t) usedTitles.add(out[a.id])
+    })
+    return out
+  }, [])
+
   const NOISE_CHART_COLORS = ['#2ecc71', '#3498db', '#e67e22']
 
   if (!MAPBOX_TOKEN) {
@@ -972,37 +994,25 @@ export default function InteractiveMap({ theme = 'light' }) {
             <p className="map-all-intro">
               Combinación de Airbnb, Google Review, Noticias y Ruido. Enfoque en la zona de los 3 parques (Morazán, San Pedro, Tres Ríos).
             </p>
-            <div className="map-noise-legend">
-              <span className="map-noise-legend-title">LAeq (dB)</span>
-              <div className="map-noise-legend-gradient" />
-              <div className="map-noise-legend-labels">
-                <span>40</span>
-                <span>95</span>
+            <div className="map-all-legends-row">
+              <div className="map-noise-legend">
+                <span className="map-noise-legend-title">LAeq (dB)</span>
+                <div className="map-noise-legend-gradient" />
+                <div className="map-noise-legend-labels">
+                  <span>40</span>
+                  <span>95</span>
+                </div>
+                <p className="map-noise-legend-hint">Hexágonos · NoiseCapture (3 parques)</p>
               </div>
-              <p className="map-noise-legend-hint">Hexágonos dinámicos con el zoom · NoiseCapture (MORAZAN, SAN PEDRO, TRES RIOS)</p>
-            </div>
-            <div className="map-noise-legend">
-              <span className="map-noise-legend-title">Valoración (1–5)</span>
-              <div className="map-noise-legend-gradient map-google-hex-gradient" />
-              <div className="map-noise-legend-labels">
-                <span>1</span>
-                <span>5</span>
+              <div className="map-noise-legend">
+                <span className="map-noise-legend-title">Valoración (1–5)</span>
+                <div className="map-noise-legend-gradient map-google-hex-gradient" />
+                <div className="map-noise-legend-labels">
+                  <span>1</span>
+                  <span>5</span>
+                </div>
+                <p className="map-noise-legend-hint">Hexágonos por valoración media</p>
               </div>
-              <p className="map-noise-legend-hint">Hexágonos por valoración media (tipo de comentario). Misma lógica que el mapa de ruido.</p>
-            </div>
-            <div className="map-all-pins-legend">
-              <span className="map-all-legend-item">
-                <span className="map-all-legend-icon map-all-legend-airbnb" aria-hidden="true" />
-                Airbnb
-              </span>
-              <span className="map-all-legend-item">
-                <span className="map-all-legend-icon map-all-legend-noticias" aria-hidden="true" />
-                Noticias
-              </span>
-              <span className="map-all-legend-item">
-                <span className="map-all-legend-icon map-all-legend-pin" aria-hidden="true" />
-                Google Review
-              </span>
             </div>
             <InteractiveTimeline
               items={itemsWithDatetime}
@@ -1015,11 +1025,8 @@ export default function InteractiveMap({ theme = 'light' }) {
               onViewRangeChange={setViewRange}
               fullRange={fullRange}
               categoryOrder={[...AIRBNB_STAR_IDS, ...NOTICIAS_ASSOCIATION_IDS, ...GOOGLE_REVIEW_ASSOCIATION_IDS]}
-              categoryLabels={{
-                ...Object.fromEntries(AIRBNB_STAR_ASSOCIATIONS.map((a) => [a.id, a.title])),
-                ...Object.fromEntries(NOTICIAS_ASSOCIATIONS.map((a) => [a.id, a.title])),
-                ...Object.fromEntries(GOOGLE_REVIEW_ASSOCIATIONS.map((a) => [a.id, a.title])),
-              }}
+              categoryLabels={allTimelineCategoryLabels}
+              compactMode
             />
           </div>
         ) : dataSource === 'google-review-hex' ? (

@@ -28,6 +28,7 @@ export default function InteractiveTimeline({
   fullRange,
   categoryOrder = null,
   categoryLabels = null,
+  compactMode = false,
 }) {
   const trackRef = useRef(null)
   const onViewRangeChangeRef = useRef(onViewRangeChange)
@@ -192,7 +193,38 @@ export default function InteractiveTimeline({
   const getCategoryLabel = (cat) => (categoryLabels && categoryLabels[cat]) || cat
 
   return (
-    <div className="interactive-timeline">
+    <div className={`interactive-timeline${compactMode ? ' interactive-timeline--compact' : ''}`}>
+      {compactMode && (
+        <div className="timeline-compact-toolbar">
+          <div className="timeline-compact-scales">
+            {SCALES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`timeline-compact-scale-btn ${scale === s ? 'active' : ''}`}
+                onClick={() => onScaleChange(s)}
+                title={`Escala: ${s}`}
+              >
+                {s === 'year' ? 'Año' : s === 'month' ? 'Mes' : s === 'day' ? 'Día' : s === 'hour' ? 'Hora' : s === 'minute' ? 'Min' : 'Seg'}
+              </button>
+            ))}
+          </div>
+          <div className="timeline-compact-range" title={`${formatTimestamp(min, scale)} — ${formatTimestamp(max, scale)}. Rueda: zoom · Arrastrar: mover`}>
+            {formatTimestamp(min, scale)} — {formatTimestamp(max, scale)}
+          </div>
+          {isZoomed && (
+            <button
+              type="button"
+              className="timeline-compact-reset"
+              onClick={handleResetZoom}
+              title="Ver todo el rango"
+              aria-label="Restablecer zoom"
+            >
+              ⊡ Todo
+            </button>
+          )}
+        </div>
+      )}
       <div className="timeline-main">
         <div className="timeline-track-wrapper">
           <div
@@ -298,46 +330,48 @@ export default function InteractiveTimeline({
         </div>
         </div>
       </div>
-      <div className="timeline-scales">
-        <div className="timeline-legend timeline-legend-top">
-          <span className="timeline-legend-label">{formatTimestamp(max, scale)}</span>
-        </div>
-        {SCALES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            className={`timeline-scale-btn ${scale === s ? 'active' : ''} ${wheelSpin?.scale === s ? 'spinning' : ''}`}
-            onMouseDown={(e) => handleScaleMouseDown(e, s)}
-            title={`Arrastra arriba/abajo para navegar en ${s}`}
-          >
-            <span className="timeline-scale-label">{s.charAt(0).toUpperCase() + s.slice(1)}</span>
-          </button>
-        ))}
-        <div className="timeline-legend timeline-legend-bottom">
-          <span className="timeline-legend-label">{formatTimestamp(min, scale)}</span>
-        </div>
-        {categories.length > 0 && (
-          <div className="timeline-category-legend">
-            {categories.map((cat) => (
-              <span key={cat} className="timeline-category-legend-item" title={getCategoryLabel(cat)}>
-                <span className="timeline-category-legend-dot" style={{ background: getCategoryColor(cat) }} />
-                <span className="timeline-category-legend-label">{getCategoryLabel(cat)}</span>
-              </span>
-            ))}
+      {!compactMode && (
+        <div className="timeline-scales">
+          <div className="timeline-legend timeline-legend-top">
+            <span className="timeline-legend-label">{formatTimestamp(max, scale)}</span>
           </div>
-        )}
-        {isZoomed && (
-          <button
-            type="button"
-            className="timeline-reset-btn"
-            onClick={handleResetZoom}
-            title="View full range"
-            aria-label="Reset zoom"
-          >
-            ⊡
-          </button>
-        )}
-      </div>
+          {SCALES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`timeline-scale-btn ${scale === s ? 'active' : ''} ${wheelSpin?.scale === s ? 'spinning' : ''}`}
+              onMouseDown={(e) => handleScaleMouseDown(e, s)}
+              title={`Arrastra arriba/abajo para navegar en ${s}`}
+            >
+              <span className="timeline-scale-label">{s.charAt(0).toUpperCase() + s.slice(1)}</span>
+            </button>
+          ))}
+          <div className="timeline-legend timeline-legend-bottom">
+            <span className="timeline-legend-label">{formatTimestamp(min, scale)}</span>
+          </div>
+          {categories.length > 0 && (
+            <div className="timeline-category-legend">
+              {categories.map((cat) => (
+                <span key={cat} className="timeline-category-legend-item" title={getCategoryLabel(cat)}>
+                  <span className="timeline-category-legend-dot" style={{ background: getCategoryColor(cat) }} />
+                  <span className="timeline-category-legend-label">{getCategoryLabel(cat)}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {isZoomed && (
+            <button
+              type="button"
+              className="timeline-reset-btn"
+              onClick={handleResetZoom}
+              title="View full range"
+              aria-label="Reset zoom"
+            >
+              ⊡
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
