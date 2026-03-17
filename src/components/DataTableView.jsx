@@ -75,7 +75,7 @@ function getSortValue(item, columnKey) {
 
 const EXTRA_COLS_MAX = 10
 
-export default function DataTableView({ events, sourceLabel, sourceKey, theme = 'light' }) {
+export default function DataTableView({ events, sourceLabel, sourceKey, theme = 'light', totalCount }) {
   const [sortColumn, setSortColumn] = useState('date')
   const [sortDirection, setSortDirection] = useState('desc')
   const [expandedId, setExpandedId] = useState(null)
@@ -127,17 +127,6 @@ export default function DataTableView({ events, sourceLabel, sourceKey, theme = 
     }
   }
 
-  if (allRows.length === 0) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm text-[var(--color-text-muted)]">0 registros</span>
-        </div>
-        <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No hay datos para mostrar en esta fuente.</p>
-      </div>
-    )
-  }
-
   const isNoiseTable = sourceKey === 'noise'
   const allowedNoiseRawKeys = useMemo(() => new Set(['location', 'leq_mean', 'lat', 'lng', 'weekKey', 'date']), [])
   const noiseRows = useMemo(() => {
@@ -154,6 +143,17 @@ export default function DataTableView({ events, sourceLabel, sourceKey, theme = 
     })
   }, [isNoiseTable, allRows, allowedNoiseRawKeys])
 
+  if (allRows.length === 0) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm text-[var(--color-text-muted)]">0 registros</span>
+        </div>
+        <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No hay datos para mostrar en esta fuente.</p>
+      </div>
+    )
+  }
+
   if (isNoiseTable && noiseRows.length === 0) {
     return (
       <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
@@ -168,9 +168,13 @@ export default function DataTableView({ events, sourceLabel, sourceKey, theme = 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-auto p-4">
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-sm text-[var(--color-text-muted)]">{isNoiseTable ? noiseRows.length : allRows.length} registros</span>
+        <span className="text-sm text-[var(--color-text-muted)]">
+          {totalCount != null && totalCount > (isNoiseTable ? noiseRows.length : allRows.length)
+            ? `${isNoiseTable ? noiseRows.length : allRows.length} de ${totalCount} registros`
+            : `${isNoiseTable ? noiseRows.length : allRows.length} registros`}
+        </span>
       </div>
-      <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg)]">
+      <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg)] data-table-scroll-container">
         {isNoiseTable ? (
           <table className="data-table" role="grid">
             <thead>
@@ -270,7 +274,7 @@ export default function DataTableView({ events, sourceLabel, sourceKey, theme = 
             {allRows.map((item, index) => {
               const raw = item.raw || item
               const isExpanded = expandedId === item.id
-              const rowKey = sourceKey ? `${sourceKey}-${item.id}` : item.id
+              const rowKey = sourceKey ? `${sourceKey}-${item.id}-${index}` : `${item.id}-${index}`
               const sourceLabel = item.source === 'airbnb' ? 'Airbnb' : item.source === 'google-review' ? 'Google Review' : item.source === 'noticias' ? 'Noticias' : item.source === 'noise' ? 'Ruido' : item.source || '—'
               return (
                 <Fragment key={rowKey}>

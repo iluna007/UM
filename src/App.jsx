@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { getRouteFromHash } from './constants'
 import { Header } from './components'
+import ErrorBoundary from './components/ErrorBoundary'
 import { getStoredBgColor, setStoredBgColor } from './components/BackgroundColorPicker'
 import { Reflections, About } from './pages'
 import './App.css'
@@ -58,9 +59,11 @@ export default function App() {
       <Header currentRoute={route} theme={theme} onThemeToggle={toggleTheme} bgColor={bgColor} onBgColorChange={setBgColor} />
 
       <main className="main">
-        <Suspense fallback={<div className="main-loading" aria-live="polite">Cargando…</div>}>
-          {renderContent()}
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="main-loading" aria-live="polite">Cargando…</div>}>
+            {renderContent()}
+          </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   )

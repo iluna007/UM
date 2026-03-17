@@ -1,29 +1,15 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import {
-  airbnbEventsWithCoords,
-  googleReviewEventsWithCoords,
-  noticiasEventsWithCoords,
-} from '../data/externalData'
-import { NOTICIAS_ASSOCIATION_IDS, NOTICIAS_ASSOCIATIONS, getNoticiasSourceLinks } from '../data/noticias'
-import { GOOGLE_REVIEW_ASSOCIATION_IDS, GOOGLE_REVIEW_ASSOCIATIONS, getGoogleReviewSourceLinks } from '../data/googleReview'
-import { AIRBNB_STAR_IDS, AIRBNB_STAR_ASSOCIATIONS } from '../data/airbnb'
+import Supercluster from 'supercluster'
+import { useLazyExternalSource } from '../data/externalData'
 import { GEOJSON_LAYERS } from '../data/geojsonLayers'
 import { getTracksNoisePoints, getNoiseStatsByLocation, getNoiseStatsByWeek, getNoiseStatsByLocationAndTime, TRACKS_LOCATIONS, getParkCentroids } from '../data/tracksLoader'
-import {
-  getGoogleReviewHexPoints,
-  getGoogleReviewStatsByLocation,
-  getGoogleReviewStatsByLocationAndTime,
-  getScoreFromEvent,
-  getYearFromEvent,
-  getStarsDisplay,
-} from '../data/googleReview'
 import { pointsToHexGeoJSON, pointsToHexGeoJSONWithValue, zoomToH3Resolution } from '../utils/noiseHexGrid'
 import DetailPanel from '../components/DetailPanel'
 import InteractiveTimeline from '../components/InteractiveTimeline'
 import MapLayersPanel from '../components/MapLayersPanel'
-import { getTimeRange, filterItemsByRange } from '../utils/datetime'
+import { getTimeRange, filterItemsByRange, extendTimeRangeByOneYear } from '../utils/datetime'
 import { getItemPrimaryColor } from '../utils/categoryColors'
 import {
   ResponsiveContainer,
@@ -75,6 +61,10 @@ const DATA_SOURCE_OPTIONS = [
   { key: 'noticias', label: 'Noticias' },
   { key: 'noise', label: 'Ruido' },
 ]
+
+const CLUSTER_THRESHOLD = 80
+const CLUSTER_RADIUS = 60
+const CLUSTER_MAX_ZOOM = 16
 
 /** Simple deterministic hash from string (for jitter seed). */
 function hashSeed(s) {
@@ -135,6 +125,21 @@ function createMapMarker(item, map, onSelect, options = {}) {
     .setLngLat([lng, lat])
     .addTo(map)
   el.addEventListener('click', () => onSelect(item))
+  return marker
+}
+
+function createClusterMarker(cluster, map, onSelect, options = {}) {
+  const [lng, lat] = cluster.geometry.coordinates
+  const count = cluster.properties?.point_count ?? 0
+  const isCluster = cluster.properties?.cluster === true
+  const el = document.createElement('div')
+  el.className = 'map-marker map-marker-cluster'
+  el.innerHTML = `<span class="map-marker-cluster-count">${count}</span>`
+  const marker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
+  el.addEventListener('click', () => {
+    if (isCluster && options.onClusterClick) options.onClusterClick(cluster)
+    else if (cluster.properties?.item) onSelect(cluster.properties.item)
+  })
   return marker
 }
 
@@ -360,6 +365,28 @@ export default function InteractiveMap({ theme = 'light' }) {
   const [mapError, setMapError] = useState(null)
   const [containerReady, setContainerReady] = useState(false)
 
+  const airbnbData = useLazyExternalSource('airbnb')
+  const googleData = useLazyExternalSource('google-review')
+  const noticiasData = useLazyExternalSource('noticias')
+
+  const airbnbEventsWithCoords = airbnbData.eventsWithCoords ?? []
+  const googleReviewEventsWithCoords = googleData.eventsWithCoords ?? []
+  const noticiasEventsWithCoords = noticiasData.eventsWithCoords ?? []
+
+  const AIRBNB_STAR_IDS = airbnbData.module?.AIRBNB_STAR_IDS ?? []
+  const AIRBNB_STAR_ASSOCIATIONS = airbnbData.module?.AIRBNB_STAR_ASSOCIATIONS ?? []
+  const NOTICIAS_ASSOCIATION_IDS = noticiasData.module?.NOTICIAS_ASSOCIATION_IDS ?? []
+  const NOTICIAS_ASSOCIATIONS = noticiasData.module?.NOTICIAS_ASSOCIATIONS ?? []
+  const getNoticiasSourceLinks = noticiasData.module?.getNoticiasSourceLinks ?? (() => [])
+  const GOOGLE_REVIEW_ASSOCIATION_IDS = googleData.module?.GOOGLE_REVIEW_ASSOCIATION_IDS ?? []
+  const GOOGLE_REVIEW_ASSOCIATIONS = googleData.module?.GOOGLE_REVIEW_ASSOCIATIONS ?? []
+  const getGoogleReviewSourceLinks = googleData.module?.getGoogleReviewSourceLinks ?? (() => [])
+  const getGoogleReviewStatsByLocation = () => googleData.module?.getGoogleReviewStatsByLocation?.() ?? []
+  const getGoogleReviewStatsByLocationAndTime = () => googleData.module?.getGoogleReviewStatsByLocationAndTime?.() ?? []
+  const getScoreFromEvent = (e) => googleData.module?.getScoreFromEvent?.(e) ?? 3
+  const getYearFromEvent = (e) => googleData.module?.getYearFromEvent?.(e) ?? null
+  const getStarsDisplay = (s) => googleData.module?.getStarsDisplay?.(s) ?? '★★★☆☆'
+
   const noisePoints = useMemo(() => {
     try {
       return getTracksNoisePoints()
@@ -370,11 +397,11 @@ export default function InteractiveMap({ theme = 'light' }) {
   const hasNoiseData = noisePoints.length > 0
   const googleHexPoints = useMemo(() => {
     try {
-      return getGoogleReviewHexPoints()
+      return googleData.module?.getGoogleReviewHexPoints?.() ?? []
     } catch (_) {
       return []
     }
-  }, [])
+  }, [googleData.module])
   const hasGoogleHexData = googleHexPoints.length > 0
 
   useEffect(() => {
@@ -404,9 +431,13 @@ export default function InteractiveMap({ theme = 'light' }) {
         }
       }, 50)
     }
+    const fallbackId = setTimeout(() => {
+      if (mapContainer.current && !check()) setContainerReady(true)
+    }, 400)
     return () => {
       if (ro) ro.disconnect()
       if (intervalId) clearInterval(intervalId)
+      clearTimeout(fallbackId)
     }
   }, [])
 
@@ -444,7 +475,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       return {
         itemsWithDatetime: combined,
         itemsWithDatetimeAndCoords: combined,
-        fullRange: range,
+        fullRange: extendTimeRangeByOneYear(range),
       }
     }
     const raw =
@@ -458,9 +489,9 @@ export default function InteractiveMap({ theme = 'light' }) {
     return {
       itemsWithDatetime: itemsDtCoords,
       itemsWithDatetimeAndCoords: itemsDtCoords,
-      fullRange: range,
+      fullRange: extendTimeRangeByOneYear(range),
     }
-  }, [dataSource])
+  }, [dataSource, airbnbEventsWithCoords, noticiasEventsWithCoords, googleReviewEventsWithCoords])
 
   useEffect(() => {
     setViewRange({ min: fullRange.min, max: fullRange.max })
@@ -470,6 +501,40 @@ export default function InteractiveMap({ theme = 'light' }) {
     () => filterItemsByRange(itemsWithDatetime, viewRange.min, viewRange.max),
     [itemsWithDatetime, viewRange.min, viewRange.max]
   )
+
+  /** Indexación por id para lookups O(1) en filtros y detalle */
+  const eventsById = useMemo(() => {
+    const byId = {}
+    if (!Array.isArray(itemsWithDatetimeAndCoords)) return byId
+    itemsWithDatetimeAndCoords.forEach((item) => {
+      if (item?.id != null) byId[item.id] = item
+    })
+    return byId
+  }, [itemsWithDatetimeAndCoords])
+
+  /** Clustering: solo cuando hay muchos puntos para no crear cientos de marcadores */
+  const clusterIndexRef = useRef(null)
+  const clusterIndex = useMemo(() => {
+    const items = itemsWithDatetimeAndCoords
+    if (!Array.isArray(items) || items.length < CLUSTER_THRESHOLD) {
+      clusterIndexRef.current = null
+      return null
+    }
+    const features = items
+      .filter((i) => i?.coordinates?.lat != null && i?.coordinates?.lng != null)
+      .map((item) => ({
+        type: 'Feature',
+        properties: { id: item.id, item },
+        geometry: {
+          type: 'Point',
+          coordinates: [item.coordinates.lng, item.coordinates.lat],
+        },
+      }))
+    const index = new Supercluster({ radius: CLUSTER_RADIUS, maxZoom: CLUSTER_MAX_ZOOM })
+    index.load(features)
+    clusterIndexRef.current = index
+    return index
+  }, [itemsWithDatetimeAndCoords])
 
   const useJitter = dataSource === 'noticias' || dataSource === 'all'
 
@@ -499,6 +564,8 @@ export default function InteractiveMap({ theme = 'light' }) {
     if (!containerReady || !MAPBOX_TOKEN || !mapContainer.current) return
 
     let map
+    let resizeObserver = null
+    let containerEl = null
     try {
       mapboxgl.accessToken = MAPBOX_TOKEN
 
@@ -546,17 +613,15 @@ export default function InteractiveMap({ theme = 'light' }) {
       mapRef.current = map
       geojsonLayerIdsRef.current = []
 
-      const containerEl = mapContainer.current
-      const resizeObserver =
-        typeof ResizeObserver !== 'undefined' &&
-        containerEl
-          ? new ResizeObserver(() => {
-              try {
-                if (mapRef.current) mapRef.current.resize()
-              } catch (_) {}
-            })
-          : null
-      if (resizeObserver && containerEl) resizeObserver.observe(containerEl)
+      containerEl = mapContainer.current
+      if (typeof ResizeObserver !== 'undefined' && containerEl) {
+        resizeObserver = new ResizeObserver(() => {
+          try {
+            if (mapRef.current) mapRef.current.resize()
+          } catch (_) {}
+        })
+        resizeObserver.observe(containerEl)
+      }
 
       const onSelect = (item) => handleSelectRef.current(item)
 
@@ -615,7 +680,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       } else {
         ensureNoiseHexLayer(map, false)
       }
-      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex' || dataSourceRef.current === 'all'
+      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'all'
       if (showGoogleHex) {
         ensureGoogleHexLayer(map, true)
         updateGoogleHexLayer(map)
@@ -731,14 +796,19 @@ export default function InteractiveMap({ theme = 'light' }) {
         updateGoogleHexLayer(map)
       }
     })
-  }, [mapStyle])
+  }, [mapStyle, containerReady])
 
   useEffect(() => {
     const visibleIds = new Set(visibleItems.map((i) => i.id))
     markersRef.current.forEach((marker) => {
-      const id = marker.getElement()?.dataset?.id
       const el = marker.getElement()
-      if (el) el.style.display = visibleIds.has(id) ? '' : 'none'
+      if (!el) return
+      const id = el.dataset?.id
+      if (id == null) {
+        el.style.display = ''
+        return
+      }
+      el.style.display = visibleIds.has(id) ? '' : 'none'
     })
   }, [visibleItems])
 
@@ -760,14 +830,32 @@ export default function InteractiveMap({ theme = 'light' }) {
       return
     }
     if (dataSource === 'google-review-hex') {
-      if (googleHexPoints.length > 0) {
-        const bounds = new mapboxgl.LngLatBounds()
-        googleHexPoints.forEach((p) => bounds.extend([p.lng, p.lat]))
-        if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
-          map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
-        }
-        ensureGoogleHexLayer(map, true)
-        updateGoogleHexLayer(map)
+      const centroids = getParkCentroids()
+      const byId = Array.isArray(googleStatsByLocation) ? googleStatsByLocation : []
+      const markers = []
+      if (centroids && typeof centroids === 'object') {
+        byId.forEach(({ id, label, avg, count }) => {
+          const c = centroids[id]
+          if (!c || c.lat == null || c.lng == null) return
+          const el = document.createElement('div')
+          el.className = 'map-marker map-marker-cluster'
+          el.innerHTML = `<span class=\"map-marker-cluster-count\">${avg != null ? avg.toFixed(1) : '—'}</span>`
+          const marker = new mapboxgl.Marker({ element: el }).setLngLat([c.lng, c.lat]).addTo(map)
+          el.addEventListener('click', () => {
+            setSelectedGooglePark((prev) => (prev === id ? null : id))
+            map.flyTo({ center: [c.lng, c.lat], zoom: 14, duration: 600 })
+          })
+          markers.push(marker)
+        })
+      }
+      markersRef.current = markers
+      const bounds = new mapboxgl.LngLatBounds()
+      markers.forEach((m) => {
+        const [lng, lat] = m.getLngLat().toArray()
+        bounds.extend([lng, lat])
+      })
+      if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
+        map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
       }
       return
     }
@@ -777,6 +865,50 @@ export default function InteractiveMap({ theme = 'light' }) {
       ensureGoogleHexLayer(map, true)
       updateGoogleHexLayer(map)
       const onSelect = (item) => handleSelectRef.current(item)
+      const indexAll = clusterIndexRef.current
+      if (indexAll) {
+        const updateClusterMarkers = () => {
+          const b = map.getBounds()
+          const zoom = Math.floor(map.getZoom())
+          const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+          const clusters = indexAll.getClusters(bbox, zoom)
+          markersRef.current.forEach((m) => m.remove())
+          const newMarkers = clusters.map((cluster) => {
+            if (cluster.properties?.cluster) {
+              return createClusterMarker(cluster, map, onSelect, {
+                onClusterClick: (c) => {
+                  const expZoom = indexAll.getClusterExpansionZoom(c.id)
+                  map.flyTo({ center: c.geometry.coordinates, zoom: expZoom, duration: 400 })
+                },
+              })
+            }
+            const item = cluster.properties?.item
+            return item ? createMapMarker(item, map, onSelect, { useJitter, source: item._mapSource }) : null
+          }).filter(Boolean)
+          markersRef.current = newMarkers
+        }
+        updateClusterMarkers()
+        const onMoveEnd = () => updateClusterMarkers()
+        map.on('moveend', onMoveEnd)
+        const bounds = new mapboxgl.LngLatBounds()
+        const centroids = getParkCentroids()
+        if (centroids && typeof centroids === 'object') {
+          Object.values(centroids).forEach((c) => {
+            if (c?.lat != null && c?.lng != null) bounds.extend([c.lng, c.lat])
+          })
+        }
+        noisePoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+        googleHexPoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+        itemsWithDatetimeAndCoords.forEach((item) => {
+          if (item?.coordinates?.lat != null && item?.coordinates?.lng != null) {
+            bounds.extend([item.coordinates.lng, item.coordinates.lat])
+          }
+        })
+        if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
+          map.fitBounds(bounds, { padding: 80, maxZoom: 13, duration: 600 })
+        }
+        return () => map.off('moveend', onMoveEnd)
+      }
       const markers = itemsWithDatetimeAndCoords
         .map((item) =>
           createMapMarker(item, map, onSelect, {
@@ -808,6 +940,33 @@ export default function InteractiveMap({ theme = 'light' }) {
     if (itemsWithDatetimeAndCoords.length === 0) return
     const onSelect = (item) => handleSelectRef.current(item)
     const pinSource = dataSource === 'airbnb' ? 'airbnb' : dataSource === 'noticias' ? 'noticias' : undefined
+    const index = clusterIndexRef.current
+    if (index) {
+      const updateClusterMarkers = () => {
+        const b = map.getBounds()
+        const zoom = Math.floor(map.getZoom())
+        const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+        const clusters = index.getClusters(bbox, zoom)
+        markersRef.current.forEach((m) => m.remove())
+        const newMarkers = clusters.map((cluster) => {
+          if (cluster.properties?.cluster) {
+            return createClusterMarker(cluster, map, onSelect, {
+              onClusterClick: (c) => {
+                const expZoom = index.getClusterExpansionZoom(c.id)
+                map.flyTo({ center: c.geometry.coordinates, zoom: expZoom, duration: 400 })
+              },
+            })
+          }
+          const item = cluster.properties?.item
+          return item ? createMapMarker(item, map, onSelect, { useJitter, source: pinSource }) : null
+        }).filter(Boolean)
+        markersRef.current = newMarkers
+      }
+      updateClusterMarkers()
+      const onMoveEnd = () => updateClusterMarkers()
+      map.on('moveend', onMoveEnd)
+      return () => map.off('moveend', onMoveEnd)
+    }
     const markers = itemsWithDatetimeAndCoords
       .map((item) => createMapMarker(item, map, onSelect, { useJitter, source: pinSource }))
       .filter(Boolean)
@@ -819,7 +978,7 @@ export default function InteractiveMap({ theme = 'light' }) {
     if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
       map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
     }
-  }, [dataSource, itemsWithDatetimeAndCoords, useJitter, noisePoints.length, googleHexPoints.length])
+  }, [dataSource, itemsWithDatetimeAndCoords, useJitter, noisePoints.length, googleHexPoints.length, clusterIndex])
 
   useEffect(() => {
     const map = mapRef.current
@@ -840,7 +999,7 @@ export default function InteractiveMap({ theme = 'light' }) {
     } else if (map.getLayer(NOISE_LAYER_ID)) {
       map.setLayoutProperty(NOISE_LAYER_ID, 'visibility', noiseVisible ? 'visible' : 'none')
     }
-    const googleHexVisible = visibleLayerIds.includes('google-hex') || dataSource === 'google-review-hex' || dataSource === 'all'
+    const googleHexVisible = visibleLayerIds.includes('google-hex') || dataSource === 'all'
     if (googleHexVisible) {
       ensureGoogleHexLayer(map, true)
       updateGoogleHexLayer(map)
@@ -885,9 +1044,13 @@ export default function InteractiveMap({ theme = 'light' }) {
       return []
     }
   }, [])
+  const [selectedGooglePark, setSelectedGooglePark] = useState(null)
   const googleCommentsSorted = useMemo(() => {
     try {
-      const list = Array.isArray(googleReviewEventsWithCoords) ? [...googleReviewEventsWithCoords] : []
+      let list = Array.isArray(googleReviewEventsWithCoords) ? [...googleReviewEventsWithCoords] : []
+      if (selectedGooglePark) {
+        list = list.filter((e) => e.park === selectedGooglePark)
+      }
       return list.sort((a, b) => {
         const ya = getYearFromEvent(a)
         const yb = getYearFromEvent(b)
@@ -897,7 +1060,7 @@ export default function InteractiveMap({ theme = 'light' }) {
     } catch (_) {
       return []
     }
-  }, [])
+  }, [googleReviewEventsWithCoords, googleData.module, selectedGooglePark])
 
   /** Etiquetas para timeline Todo: sin repetir títulos (prefijo Noticias/Google si coincide). */
   const allTimelineCategoryLabels = useMemo(() => {
@@ -937,7 +1100,12 @@ export default function InteractiveMap({ theme = 'light' }) {
     )
   }
 
+  const isLoadingPinData =
+    (dataSource === 'airbnb' && airbnbData.loading) ||
+    (dataSource === 'noticias' && noticiasData.loading) ||
+    (dataSource === 'all' && (airbnbData.loading || noticiasData.loading || googleData.loading))
   const canShowMap =
+    isLoadingPinData ||
     itemsWithDatetimeAndCoords.length > 0 ||
     (dataSource === 'noise' && hasNoiseData) ||
     (dataSource === 'google-review-hex' && hasGoogleHexData) ||
@@ -1047,17 +1215,23 @@ export default function InteractiveMap({ theme = 'light' }) {
               <p className="map-noise-legend-hint">Hexágonos por valoración media (tipo de comentario). Misma lógica que el mapa de ruido.</p>
             </div>
             <div className="map-noise-summary">
-              <h3 className="map-noise-summary-title">Promedio por localidad</h3>
+              <h3 className="map-noise-summary-title">Promedio por parque</h3>
               <ul className="map-noise-summary-list">
-                {googleStatsByLocation.map(({ label, avg, count }) => (
-                  <li key={label}>
+                {googleStatsByLocation.map(({ id, label, avg, count }) => (
+                  <li key={id}>
                     <span className="map-noise-summary-label">{label}</span>
                     <span className="map-noise-summary-value">{avg != null ? `${avg}` : '—'}</span>
                     <span className="map-noise-summary-count">({count} comentarios)</span>
                   </li>
                 ))}
               </ul>
-              <h3 className="map-noise-summary-title">Comentarios por año</h3>
+              <h3 className="map-noise-summary-title">
+                Comentarios por año
+                {selectedGooglePark &&
+                  ` · filtrado por parque: ${
+                    googleStatsByLocation.find((p) => p.id === selectedGooglePark)?.label ?? selectedGooglePark
+                  }`}
+              </h3>
               <ul className="map-google-comments-list">
                 {googleCommentsSorted.map((ev) => {
                   const year = getYearFromEvent(ev)
@@ -1298,6 +1472,11 @@ export default function InteractiveMap({ theme = 'light' }) {
         {!containerReady && (
           <div className="interactive-map-loading-msg" aria-live="polite">
             Cargando mapa…
+          </div>
+        )}
+        {containerReady && isLoadingPinData && itemsWithDatetimeAndCoords.length === 0 && (
+          <div className="interactive-map-loading-msg" aria-live="polite">
+            Cargando datos…
           </div>
         )}
         <div ref={mapContainer} className="interactive-map-gl" />

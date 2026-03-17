@@ -14,6 +14,8 @@ export function toTimestamp(dt) {
   return d.getTime()
 }
 
+const ONE_YEAR_MS = 365.25 * 24 * 3600 * 1000
+
 /**
  * Get min/max timestamps from archive items
  */
@@ -22,6 +24,20 @@ export function getTimeRange(items) {
   if (withDt.length === 0) return { min: 0, max: Date.now() }
   const timestamps = withDt.map((i) => toTimestamp(i.datetime))
   return { min: Math.min(...timestamps), max: Math.max(...timestamps) }
+}
+
+/**
+ * Extend a time range by one year at each end (for timeline navigation).
+ * If range is invalid (min >= max), returns unchanged.
+ */
+export function extendTimeRangeByOneYear(range) {
+  if (!range || typeof range.min !== 'number' || typeof range.max !== 'number' || range.max <= range.min) {
+    return range || { min: 0, max: 0 }
+  }
+  return {
+    min: Math.max(0, range.min - ONE_YEAR_MS),
+    max: range.max + ONE_YEAR_MS,
+  }
 }
 
 /**

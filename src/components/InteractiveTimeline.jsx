@@ -2,27 +2,33 @@ import { useRef, useState, useEffect, useMemo } from 'react'
 import {
   toTimestamp,
   findNearestItem,
-  SCALES,
   formatTimestamp,
   getTickLabels,
   getGridLines,
-  getScaleUnitMs,
 } from '../utils/datetime'
 import { getUniqueCategories, getItemCategories, getCategoryColor, CATEGORY_COLORS } from '../utils/categoryColors'
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_COLORS)
 
 const ZOOM_FACTOR = 0.5
-const WHEEL_PIXELS_PER_UNIT = 12
+const ZOOM_IN_RATIO = 0.7
+const ZOOM_OUT_RATIO = 1.4
+const STEP_RATIO = 0.25
+const ONE_YEAR_MS = 365.25 * 24 * 3600 * 1000
 const MIN_ZOOM_RANGE_MS = 3600000
+
+/** Escala de visualización según el rango visible (años vs meses). */
+function getDisplayScale(rangeMs) {
+  return rangeMs > 2 * ONE_YEAR_MS ? 'year' : 'month'
+}
 
 export default function InteractiveTimeline({
   items,
   visibleItems,
   selectedItem,
   onSelectItem,
-  scale,
-  onScaleChange,
+  scale: _scale,
+  onScaleChange: _onScaleChange,
   viewRange,
   onViewRangeChange,
   fullRange,
@@ -36,10 +42,10 @@ export default function InteractiveTimeline({
 
   const { min, max } = viewRange
   const range = max - min || 1
-  const isZoomed = min > fullRange.min || max < fullRange.max
-
-  const ticks = getTickLabels(min, max, scale, 5)
-  const gridLines = getGridLines(min, max, scale)
+  const isZoomed = fullRange.max > fullRange.min && (min > fullRange.min || max < fullRange.max)
+  const displayScale = getDisplayScale(range)
+  const ticks = getTickLabels(min, max, displayScale, 5)
+  const gridLines = getGridLines(min, max, displayScale)
 
   const handleTrackClick = (e) => {
     if (didDragRef.current) return
@@ -72,56 +78,64 @@ export default function InteractiveTimeline({
   const [dragStart, setDragStart] = useState(null)
   const didDragRef = useRef(false)
 
-  const [wheelSpin, setWheelSpin] = useState(null)
-  const didWheelSpinRef = useRef(false)
-  const wheelSpinRef = useRef(null)
+  const fullRangeSize = fullRange.max - fullRange.min || 1
+  const stepMs = Math.min(range * STEP_RATIO, ONE_YEAR_MS)
 
-  const handleScaleMouseDown = (e, s) => {
-    if (e.button !== 0) return
-    e.preventDefault()
-    e.stopPropagation()
-    didWheelSpinRef.current = false
-    const data = { scale: s, startY: e.clientY, startMin: min, startMax: max }
-    wheelSpinRef.current = data
-    setWheelSpin(data)
+  const handleZoomIn = () => {
+    const center = (min + max) / 2
+    let newRange = range * ZOOM_IN_RATIO
+    newRange = Math.max(MIN_ZOOM_RANGE_MS, Math.min(fullRangeSize, newRange))
+    let newMin = center - newRange / 2
+    let newMax = center + newRange / 2
+    if (newMin < fullRange.min) {
+      newMin = fullRange.min
+      newMax = Math.min(fullRange.max, fullRange.min + newRange)
+    }
+    if (newMax > fullRange.max) {
+      newMax = fullRange.max
+      newMin = Math.max(fullRange.min, fullRange.max - newRange)
+    }
+    onViewRangeChangeRef.current({ min: newMin, max: newMax })
   }
 
-  useEffect(() => {
-    if (!wheelSpin) return
-    const onMove = (e) => {
-      const data = wheelSpinRef.current
-      if (!data) return
-      didWheelSpinRef.current = true
-      const unitMs = getScaleUnitMs(data.scale)
-      const totalDeltaY = data.startY - e.clientY
-      const units = totalDeltaY / WHEEL_PIXELS_PER_UNIT
-      const shiftMs = units * unitMs
-      let newMin = data.startMin + shiftMs
-      let newMax = data.startMax + shiftMs
-      const rangeSize = data.startMax - data.startMin
-      if (newMin < fullRange.min) {
-        newMin = fullRange.min
-        newMax = Math.min(fullRange.max, fullRange.min + rangeSize)
-      }
-      if (newMax > fullRange.max) {
-        newMax = fullRange.max
-        newMin = Math.max(fullRange.min, fullRange.max - rangeSize)
-      }
-      onViewRangeChangeRef.current({ min: newMin, max: newMax })
+  const handleZoomOut = () => {
+    const center = (min + max) / 2
+    let newRange = range * ZOOM_OUT_RATIO
+    newRange = Math.max(MIN_ZOOM_RANGE_MS, Math.min(fullRangeSize, newRange))
+    let newMin = center - newRange / 2
+    let newMax = center + newRange / 2
+    if (newMin < fullRange.min) {
+      newMin = fullRange.min
+      newMax = Math.min(fullRange.max, fullRange.min + newRange)
     }
-    const onUp = () => {
-      const data = wheelSpinRef.current
-      if (!didWheelSpinRef.current && data) onScaleChange(data.scale)
-      wheelSpinRef.current = null
-      setWheelSpin(null)
+    if (newMax > fullRange.max) {
+      newMax = fullRange.max
+      newMin = Math.max(fullRange.min, fullRange.max - newRange)
     }
-    window.addEventListener('mousemove', onMove, { capture: true })
-    window.addEventListener('mouseup', onUp, { capture: true })
-    return () => {
-      window.removeEventListener('mousemove', onMove, { capture: true })
-      window.removeEventListener('mouseup', onUp, { capture: true })
+    onViewRangeChangeRef.current({ min: newMin, max: newMax })
+  }
+
+  const handleStepBack = () => {
+    const rangeSize = max - min
+    let newMin = min - stepMs
+    let newMax = max - stepMs
+    if (newMin < fullRange.min) {
+      newMin = fullRange.min
+      newMax = Math.min(fullRange.max, fullRange.min + rangeSize)
     }
-  }, [wheelSpin, fullRange.min, fullRange.max, onScaleChange])
+    onViewRangeChangeRef.current({ min: newMin, max: newMax })
+  }
+
+  const handleStepForward = () => {
+    const rangeSize = max - min
+    let newMin = min + stepMs
+    let newMax = max + stepMs
+    if (newMax > fullRange.max) {
+      newMax = fullRange.max
+      newMin = Math.max(fullRange.min, fullRange.max - rangeSize)
+    }
+    onViewRangeChangeRef.current({ min: newMin, max: newMax })
+  }
 
   const handleMouseDown = (e) => {
     if (e.button === 0) {
@@ -194,37 +208,61 @@ export default function InteractiveTimeline({
 
   return (
     <div className={`interactive-timeline${compactMode ? ' interactive-timeline--compact' : ''}`}>
-      {compactMode && (
-        <div className="timeline-compact-toolbar">
-          <div className="timeline-compact-scales">
-            {SCALES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`timeline-compact-scale-btn ${scale === s ? 'active' : ''}`}
-                onClick={() => onScaleChange(s)}
-                title={`Escala: ${s}`}
-              >
-                {s === 'year' ? 'Año' : s === 'month' ? 'Mes' : s === 'day' ? 'Día' : s === 'hour' ? 'Hora' : s === 'minute' ? 'Min' : 'Seg'}
-              </button>
-            ))}
-          </div>
-          <div className="timeline-compact-range" title={`${formatTimestamp(min, scale)} — ${formatTimestamp(max, scale)}. Rueda: zoom · Arrastrar: mover`}>
-            {formatTimestamp(min, scale)} — {formatTimestamp(max, scale)}
-          </div>
-          {isZoomed && (
-            <button
-              type="button"
-              className="timeline-compact-reset"
-              onClick={handleResetZoom}
-              title="Ver todo el rango"
-              aria-label="Restablecer zoom"
-            >
-              ⊡ Todo
-            </button>
-          )}
-        </div>
-      )}
+      <div className="timeline-zoom-toolbar">
+        <button
+          type="button"
+          className="timeline-zoom-btn timeline-zoom-back"
+          onClick={handleStepBack}
+          title="Atrás en el tiempo"
+          aria-label="Atrás"
+        >
+          ← Atrás
+        </button>
+        <button
+          type="button"
+          className="timeline-zoom-btn timeline-zoom-fwd"
+          onClick={handleStepForward}
+          title="Adelante en el tiempo"
+          aria-label="Adelante"
+        >
+          Adelante →
+        </button>
+        <button
+          type="button"
+          className="timeline-zoom-btn timeline-zoom-out"
+          onClick={handleZoomOut}
+          title="Alejar (zoom out)"
+          aria-label="Zoom out"
+        >
+          − Zoom out
+        </button>
+        <button
+          type="button"
+          className="timeline-zoom-btn timeline-zoom-in"
+          onClick={handleZoomIn}
+          title="Acercar (zoom in)"
+          aria-label="Zoom in"
+        >
+          + Zoom in
+        </button>
+        <span
+          className="timeline-zoom-range"
+          title={`${formatTimestamp(min, displayScale)} — ${formatTimestamp(max, displayScale)}. Rueda: zoom · Arrastrar: mover`}
+        >
+          {formatTimestamp(min, displayScale)} — {formatTimestamp(max, displayScale)}
+        </span>
+        {isZoomed && (
+          <button
+            type="button"
+            className="timeline-zoom-reset"
+            onClick={handleResetZoom}
+            title="Ver todo el rango"
+            aria-label="Restablecer zoom"
+          >
+            ⊡ Todo
+          </button>
+        )}
+      </div>
       <div className="timeline-main">
         <div className="timeline-track-wrapper">
           <div
@@ -277,7 +315,7 @@ export default function InteractiveTimeline({
                         e.stopPropagation()
                         if (isInView) onSelectItem(item)
                       }}
-                      title={`${item.title} — ${formatTimestamp(ts, scale)}`}
+                      title={`${item.title} — ${formatTimestamp(ts, displayScale)}`}
                     >
                       <span className="timeline-marker-dot" />
                     </button>
@@ -317,7 +355,7 @@ export default function InteractiveTimeline({
                           e.stopPropagation()
                           if (isInView) onSelectItem(item)
                         }}
-                        title={`${item.title} — ${formatTimestamp(ts, scale)} (${getCategoryLabel(category)})`}
+                        title={`${item.title} — ${formatTimestamp(ts, displayScale)} (${getCategoryLabel(category)})`}
                       >
                         <span className="timeline-marker-dot" />
                       </button>
@@ -330,46 +368,14 @@ export default function InteractiveTimeline({
         </div>
         </div>
       </div>
-      {!compactMode && (
-        <div className="timeline-scales">
-          <div className="timeline-legend timeline-legend-top">
-            <span className="timeline-legend-label">{formatTimestamp(max, scale)}</span>
-          </div>
-          {SCALES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={`timeline-scale-btn ${scale === s ? 'active' : ''} ${wheelSpin?.scale === s ? 'spinning' : ''}`}
-              onMouseDown={(e) => handleScaleMouseDown(e, s)}
-              title={`Arrastra arriba/abajo para navegar en ${s}`}
-            >
-              <span className="timeline-scale-label">{s.charAt(0).toUpperCase() + s.slice(1)}</span>
-            </button>
+      {categories.length > 0 && (
+        <div className="timeline-category-legend">
+          {categories.map((cat) => (
+            <span key={cat} className="timeline-category-legend-item" title={getCategoryLabel(cat)}>
+              <span className="timeline-category-legend-dot" style={{ background: getCategoryColor(cat) }} />
+              <span className="timeline-category-legend-label">{getCategoryLabel(cat)}</span>
+            </span>
           ))}
-          <div className="timeline-legend timeline-legend-bottom">
-            <span className="timeline-legend-label">{formatTimestamp(min, scale)}</span>
-          </div>
-          {categories.length > 0 && (
-            <div className="timeline-category-legend">
-              {categories.map((cat) => (
-                <span key={cat} className="timeline-category-legend-item" title={getCategoryLabel(cat)}>
-                  <span className="timeline-category-legend-dot" style={{ background: getCategoryColor(cat) }} />
-                  <span className="timeline-category-legend-label">{getCategoryLabel(cat)}</span>
-                </span>
-              ))}
-            </div>
-          )}
-          {isZoomed && (
-            <button
-              type="button"
-              className="timeline-reset-btn"
-              onClick={handleResetZoom}
-              title="View full range"
-              aria-label="Reset zoom"
-            >
-              ⊡
-            </button>
-          )}
         </div>
       )}
     </div>

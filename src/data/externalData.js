@@ -1,18 +1,14 @@
 /**
- * Combined external data (Airbnb, Google Review, Noticias, Ruido) for map, timeline and archive.
+ * Datos externos combinados (Ruido, helpers). Airbnb / Google Review / Noticias
+ * se cargan en diferido vía externalDataLoader.js para mejorar rendimiento.
  */
 
-import { airbnbEvents, airbnbEventsWithCoords } from './airbnb'
-import { googleReviewEvents, googleReviewEventsWithCoords } from './googleReview'
-import { noticiasEvents, noticiasEventsWithCoords } from './noticias'
 import { getTracksNoisePoints } from './tracksLoader'
-import { getTimeRange } from '../utils/datetime'
+import { EXTERNAL_SOURCE_KEYS, useLazyExternalSource, loadSource } from './externalDataLoader'
 
-export { airbnbEvents, airbnbEventsWithCoords } from './airbnb'
-export { googleReviewEvents, googleReviewEventsWithCoords } from './googleReview'
-export { noticiasEvents, noticiasEventsWithCoords } from './noticias'
+export { EXTERNAL_SOURCE_KEYS, useLazyExternalSource, loadSource } from './externalDataLoader'
 
-/** Noise points as archive-style events (for Archive Ruido tab). */
+/** Ruido como eventos tipo archivo (pestaña Ruido). */
 export function getNoiseArchiveEvents() {
   const points = getTracksNoisePoints()
   return points.map((p, i) => {
@@ -37,32 +33,12 @@ export function getNoiseArchiveEvents() {
   })
 }
 
-/** All events from the three external sources (for archive tabs; noise is separate). */
-export const allExternalEvents = [
-  ...airbnbEvents,
-  ...googleReviewEvents,
-  ...noticiasEvents,
-]
-
-/** All events that have coordinates (for map). */
-export const allExternalEventsWithCoords = [
-  ...airbnbEventsWithCoords,
-  ...googleReviewEventsWithCoords,
-  ...noticiasEventsWithCoords,
-]
-
-/** All events with valid datetime (for timeline). */
-export const allExternalEventsWithDatetime = allExternalEvents.filter(
-  (e) => e.datetime && e.coordinates && e.coordinates.lat != null && e.coordinates.lng != null
-)
-
-/** Time range of external data for timeline. */
-export const externalTimeRange = getTimeRange(allExternalEventsWithCoords)
-
-/** Source labels for UI (Archive tabs). */
-export const EXTERNAL_SOURCES = [
-  { key: 'airbnb', label: 'Airbnb', events: airbnbEvents },
-  { key: 'google-review', label: 'Google Review', events: googleReviewEvents },
-  { key: 'noticias', label: 'Noticias', events: noticiasEvents },
-  { key: 'noise', label: 'Ruido', events: getNoiseArchiveEvents() },
-]
+/**
+ * EXTERNAL_SOURCES para la UI: keys + labels. Los events por pestaña se obtienen
+ * con useLazyExternalSource(key) o getNoiseArchiveEvents() para Ruido.
+ */
+export const EXTERNAL_SOURCES = EXTERNAL_SOURCE_KEYS.map(({ key, label }) => ({
+  key,
+  label,
+  events: key === 'noise' ? getNoiseArchiveEvents() : [],
+}))
