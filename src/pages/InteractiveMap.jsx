@@ -1083,9 +1083,9 @@ export default function InteractiveMap({ theme = 'light' }) {
                 ))}
               </ul>
               <h3 className="map-noise-summary-title">
-                Comentarios por año
+                Comentarios por parque
                 {selectedGooglePark &&
-                  ` · filtrado por parque: ${
+                  ` · parque seleccionado: ${
                     googleStatsByLocation.find((p) => p.id === selectedGooglePark)?.label ?? selectedGooglePark
                   }`}
               </h3>
