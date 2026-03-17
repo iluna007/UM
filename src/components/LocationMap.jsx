@@ -15,7 +15,11 @@ export default function LocationMap({ coordinates, theme = 'light' }) {
   useEffect(() => {
     if (!MAPBOX_TOKEN || !coordinates || !mapContainer.current) return
 
-    const [lng, lat] = Array.isArray(coordinates) ? coordinates : [coordinates.lng, coordinates.lat]
+    const [lng, lat] = Array.isArray(coordinates)
+      ? coordinates
+      : [coordinates?.lng, coordinates?.lat]
+
+    if (lng == null || lat == null || !Number.isFinite(lng) || !Number.isFinite(lat)) return
 
     if (!mapRef.current) {
       mapboxgl.accessToken = MAPBOX_TOKEN

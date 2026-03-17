@@ -339,15 +339,33 @@ function ensureGoogleHexLayer(map, visible) {
   }
 }
 
-function updateGoogleHexLayer(map) {
-  if (!map.getSource(GOOGLE_HEX_SOURCE_ID)) return
-  const points = getGoogleReviewHexPoints()
-  const zoom = map.getZoom()
-  const res = zoomToH3Resolution(zoom)
-  const geojson = points.length > 0
-    ? pointsToHexGeoJSONWithValue(points, res, null, { valueKey: 'score', outputKey: 'meanScore' })
-    : { type: 'FeatureCollection', features: [] }
-  map.getSource(GOOGLE_HEX_SOURCE_ID).setData(geojson)
+function updateGoogleHexLayer(map, points) {
+  try {
+    if (!map.getSource(GOOGLE_HEX_SOURCE_ID)) return
+    const safePoints = Array.isArray(points) ? points : []
+    const zoom = map.getZoom()
+    const res = zoomToH3Resolution(zoom)
+    const geojson =
+      safePoints.length > 0
+        ? pointsToHexGeoJSONWithValue(safePoints, res, null, {
+            valueKey: 'score',
+            outputKey: 'meanScore',
+          })
+        : { type: 'FeatureCollection', features: [] }
+    map.getSource(GOOGLE_HEX_SOURCE_ID).setData(geojson)
+  } catch (err) {
+    console.warn('updateGoogleHexLayer failed', err)
+    try {
+      if (map.getSource(GOOGLE_HEX_SOURCE_ID)) {
+        map.getSource(GOOGLE_HEX_SOURCE_ID).setData({
+          type: 'FeatureCollection',
+          features: [],
+        })
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
 }
 
 export default function InteractiveMap({ theme = 'light' }) {
@@ -451,7 +469,7 @@ export default function InteractiveMap({ theme = 'light' }) {
     const t = setTimeout(() => {
       if (map.isStyleLoaded && map.isStyleLoaded()) {
         ensureGoogleHexLayer(map, true)
-        updateGoogleHexLayer(map)
+        updateGoogleHexLayer(map, googleHexPoints)
       }
     }, 200)
     return () => clearTimeout(t)
@@ -578,10 +596,18 @@ export default function InteractiveMap({ theme = 'light' }) {
         })
       }
       if (noisePoints.length > 0) {
-        noisePoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+        noisePoints.forEach((p) => {
+          if (p && p.lat != null && p.lng != null) {
+            bounds.extend([p.lng, p.lat])
+          }
+        })
       }
       if (googleHexPoints.length > 0) {
-        googleHexPoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+        googleHexPoints.forEach((p) => {
+          if (p && p.lat != null && p.lng != null) {
+            bounds.extend([p.lng, p.lat])
+          }
+        })
       }
 
       const hasValidBounds =
@@ -638,7 +664,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       }
       const updateGoogleHexIfVisible = () => {
         if (visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex') {
-          updateGoogleHexLayer(map)
+          updateGoogleHexLayer(map, googleHexPoints)
         }
       }
       let zoomThrottle = null
@@ -683,7 +709,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'all'
       if (showGoogleHex) {
         ensureGoogleHexLayer(map, true)
-        updateGoogleHexLayer(map)
+        updateGoogleHexLayer(map, googleHexPoints)
       }
       setTimeout(() => {
         updateNoiseIfVisible()
@@ -735,7 +761,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       }
       const updateGoogleHexIfVisible = () => {
         if (visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex' || dataSourceRef.current === 'all') {
-          updateGoogleHexLayer(map)
+          updateGoogleHexLayer(map, googleHexPoints)
         }
       }
       let zoomThrottle = null
@@ -793,7 +819,7 @@ export default function InteractiveMap({ theme = 'light' }) {
       const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex' || dataSourceRef.current === 'all'
       if (showGoogleHex) {
         ensureGoogleHexLayer(map, true)
-        updateGoogleHexLayer(map)
+        updateGoogleHexLayer(map, googleHexPoints)
       }
     })
   }, [mapStyle, containerReady])
@@ -820,7 +846,11 @@ export default function InteractiveMap({ theme = 'light' }) {
     if (dataSource === 'noise') {
       if (noisePoints.length > 0) {
         const bounds = new mapboxgl.LngLatBounds()
-        noisePoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+        noisePoints.forEach((p) => {
+          if (p && p.lat != null && p.lng != null) {
+            bounds.extend([p.lng, p.lat])
+          }
+        })
         if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
           map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
         }
@@ -897,8 +927,16 @@ export default function InteractiveMap({ theme = 'light' }) {
             if (c?.lat != null && c?.lng != null) bounds.extend([c.lng, c.lat])
           })
         }
-        noisePoints.forEach((p) => bounds.extend([p.lng, p.lat]))
-        googleHexPoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+        noisePoints.forEach((p) => {
+          if (p && p.lat != null && p.lng != null) {
+            bounds.extend([p.lng, p.lat])
+          }
+        })
+        googleHexPoints.forEach((p) => {
+          if (p && p.lat != null && p.lng != null) {
+            bounds.extend([p.lng, p.lat])
+          }
+        })
         itemsWithDatetimeAndCoords.forEach((item) => {
           if (item?.coordinates?.lat != null && item?.coordinates?.lng != null) {
             bounds.extend([item.coordinates.lng, item.coordinates.lat])
@@ -925,8 +963,16 @@ export default function InteractiveMap({ theme = 'light' }) {
           if (c?.lat != null && c?.lng != null) bounds.extend([c.lng, c.lat])
         })
       }
-      noisePoints.forEach((p) => bounds.extend([p.lng, p.lat]))
-      googleHexPoints.forEach((p) => bounds.extend([p.lng, p.lat]))
+      noisePoints.forEach((p) => {
+        if (p && p.lat != null && p.lng != null) {
+          bounds.extend([p.lng, p.lat])
+        }
+      })
+      googleHexPoints.forEach((p) => {
+        if (p && p.lat != null && p.lng != null) {
+          bounds.extend([p.lng, p.lat])
+        }
+      })
       itemsWithDatetimeAndCoords.forEach((item) => {
         if (item?.coordinates?.lat != null && item?.coordinates?.lng != null) {
           bounds.extend([item.coordinates.lng, item.coordinates.lat])
@@ -973,7 +1019,9 @@ export default function InteractiveMap({ theme = 'light' }) {
     markersRef.current = markers
     const bounds = new mapboxgl.LngLatBounds()
     itemsWithDatetimeAndCoords.forEach((item) => {
-      bounds.extend([item.coordinates.lng, item.coordinates.lat])
+      if (item?.coordinates?.lat != null && item?.coordinates?.lng != null) {
+        bounds.extend([item.coordinates.lng, item.coordinates.lat])
+      }
     })
     if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
       map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
@@ -1232,36 +1280,79 @@ export default function InteractiveMap({ theme = 'light' }) {
                     googleStatsByLocation.find((p) => p.id === selectedGooglePark)?.label ?? selectedGooglePark
                   }`}
               </h3>
-              <ul className="map-google-comments-list">
-                {googleCommentsSorted.map((ev) => {
-                  const year = getYearFromEvent(ev)
-                  const score = getScoreFromEvent(ev)
-                  const location = ev.raw?.location || ev.others?.location || '—'
-                  const keywords = ev.raw?.keywords || '—'
-                  const isSelected = selectedGoogleCommentId === ev.id
-                  return (
-                    <li
-                      key={ev.id}
-                      className={`map-google-comment-row ${isSelected ? 'selected' : ''}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedGoogleCommentId((id) => (id === ev.id ? null : ev.id))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setSelectedGoogleCommentId((id) => (id === ev.id ? null : ev.id))
-                        }
-                      }}
-                    >
-                      <span className="map-google-comment-year">{year ?? '—'}</span>
-                      <span className="map-google-comment-location" title={location}>{location}</span>
-                      <span className="map-google-comment-keywords" title={keywords}>{keywords}</span>
-                      <span className="map-google-comment-stars" title={`Valoración ${score}`}>{getStarsDisplay(score)}</span>
-                      <span className="map-google-comment-id">{ev.raw?.id ?? ev.id}</span>
-                    </li>
-                  )
-                })}
-              </ul>
+              {(() => {
+                const groups = new Map()
+                const pushToGroup = (key, label, ev) => {
+                  if (!groups.has(key)) groups.set(key, { label, items: [] })
+                  groups.get(key).items.push(ev)
+                }
+                const DISPLAY_LABELS = {
+                  MORAZAN: 'Parque Morazán',
+                  'SAN PEDRO': 'P. J.F. Kennedy',
+                  'TRES RIOS': 'Parque Central de Tres Ríos',
+                  OTROS: 'Otros',
+                }
+                googleCommentsSorted.forEach((ev) => {
+                  const parkId = ev.park || 'OTROS'
+                  if (selectedGooglePark && parkId !== selectedGooglePark) return
+                  const label =
+                    DISPLAY_LABELS[parkId] ||
+                    googleStatsByLocation.find((p) => p.id === parkId)?.label ||
+                    parkId
+                  pushToGroup(parkId, label, ev)
+                })
+                const order = ['MORAZAN', 'SAN PEDRO', 'TRES RIOS', 'OTROS']
+                const orderedGroups = order
+                  .map((id) => groups.get(id))
+                  .filter(Boolean)
+                if (!orderedGroups.length) return null
+                return orderedGroups.map(({ label, items }) => (
+                  <div key={label} className="map-google-comments-group">
+                    <h4 className="map-google-comments-group-title">{label}</h4>
+                    <ul className="map-google-comments-list">
+                      {items.map((ev) => {
+                        const year = getYearFromEvent(ev)
+                        const score = getScoreFromEvent(ev)
+                        const location = ev.raw?.location || ev.others?.location || '—'
+                        const keywords = ev.raw?.keywords || '—'
+                        const isSelected = selectedGoogleCommentId === ev.id
+                        return (
+                          <li
+                            key={ev.id}
+                            className={`map-google-comment-row ${isSelected ? 'selected' : ''}`}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() =>
+                              setSelectedGoogleCommentId((id) => (id === ev.id ? null : ev.id))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                setSelectedGoogleCommentId((id) => (id === ev.id ? null : ev.id))
+                              }
+                            }}
+                          >
+                            <span className="map-google-comment-year">{year ?? '—'}</span>
+                            <span className="map-google-comment-location" title={location}>
+                              {location}
+                            </span>
+                            <span className="map-google-comment-keywords" title={keywords}>
+                              {keywords}
+                            </span>
+                            <span
+                              className="map-google-comment-stars"
+                              title={`Valoración ${score}`}
+                            >
+                              {getStarsDisplay(score)}
+                            </span>
+                            <span className="map-google-comment-id">{ev.raw?.id ?? ev.id}</span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                ))
+              })()}
               {selectedGoogleCommentId && (() => {
                 const ev = googleReviewEventsWithCoords.find((e) => e.id === selectedGoogleCommentId)
                 if (!ev) return null

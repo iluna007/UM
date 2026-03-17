@@ -108,7 +108,11 @@ export function createGoogleReviewFromRaw(raw) {
       const park = getParkFromEvent(e)
       return { ...e, park }
     })
-    .filter((e) => e.coordinates && e.coordinates.lat != null && e.coordinates.lng != null)
+    .filter((e) => {
+      const lat = e?.coordinates?.lat
+      const lng = e?.coordinates?.lng
+      return lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)
+    })
 
   function getGoogleReviewHexPoints() {
     return googleReviewEventsWithCoords.map((e, index) => {
