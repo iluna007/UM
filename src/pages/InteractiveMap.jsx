@@ -55,7 +55,6 @@ const MAP_LAYERS = [
 ]
 
 const DATA_SOURCE_OPTIONS = [
-  { key: 'all', label: 'Todo' },
   { key: 'airbnb', label: 'Airbnb' },
   { key: 'google-review-hex', label: 'Google Review' },
   { key: 'noticias', label: 'Noticias' },
@@ -339,33 +338,9 @@ function ensureGoogleHexLayer(map, visible) {
   }
 }
 
-function updateGoogleHexLayer(map, points) {
-  try {
-    if (!map.getSource(GOOGLE_HEX_SOURCE_ID)) return
-    const safePoints = Array.isArray(points) ? points : []
-    const zoom = map.getZoom()
-    const res = zoomToH3Resolution(zoom)
-    const geojson =
-      safePoints.length > 0
-        ? pointsToHexGeoJSONWithValue(safePoints, res, null, {
-            valueKey: 'score',
-            outputKey: 'meanScore',
-          })
-        : { type: 'FeatureCollection', features: [] }
-    map.getSource(GOOGLE_HEX_SOURCE_ID).setData(geojson)
-  } catch (err) {
-    console.warn('updateGoogleHexLayer failed', err)
-    try {
-      if (map.getSource(GOOGLE_HEX_SOURCE_ID)) {
-        map.getSource(GOOGLE_HEX_SOURCE_ID).setData({
-          type: 'FeatureCollection',
-          features: [],
-        })
-      }
-    } catch (_) {
-      // ignore
-    }
-  }
+// Desactivar por completo los hexágonos de Google Review para evitar errores de datos.
+function updateGoogleHexLayer() {
+  return
 }
 
 export default function InteractiveMap({ theme = 'light' }) {
@@ -483,19 +458,6 @@ export default function InteractiveMap({ theme = 'light' }) {
         fullRange: { min: 0, max: 0 },
       }
     }
-    if (dataSource === 'all') {
-      const combined = [
-        ...(Array.isArray(airbnbEventsWithCoords) ? airbnbEventsWithCoords : []).map((e) => ({ ...e, _mapSource: 'airbnb' })),
-        ...(Array.isArray(noticiasEventsWithCoords) ? noticiasEventsWithCoords : []).map((e) => ({ ...e, _mapSource: 'noticias' })),
-        ...(Array.isArray(googleReviewEventsWithCoords) ? googleReviewEventsWithCoords : []).map((e) => ({ ...e, _mapSource: 'google-review' })),
-      ]
-      const range = getTimeRange(combined)
-      return {
-        itemsWithDatetime: combined,
-        itemsWithDatetimeAndCoords: combined,
-        fullRange: extendTimeRangeByOneYear(range),
-      }
-    }
     const raw =
       dataSource === 'airbnb'
         ? airbnbEventsWithCoords
@@ -532,29 +494,9 @@ export default function InteractiveMap({ theme = 'light' }) {
 
   /** Clustering: solo cuando hay muchos puntos para no crear cientos de marcadores */
   const clusterIndexRef = useRef(null)
-  const clusterIndex = useMemo(() => {
-    const items = itemsWithDatetimeAndCoords
-    if (!Array.isArray(items) || items.length < CLUSTER_THRESHOLD) {
-      clusterIndexRef.current = null
-      return null
-    }
-    const features = items
-      .filter((i) => i?.coordinates?.lat != null && i?.coordinates?.lng != null)
-      .map((item) => ({
-        type: 'Feature',
-        properties: { id: item.id, item },
-        geometry: {
-          type: 'Point',
-          coordinates: [item.coordinates.lng, item.coordinates.lat],
-        },
-      }))
-    const index = new Supercluster({ radius: CLUSTER_RADIUS, maxZoom: CLUSTER_MAX_ZOOM })
-    index.load(features)
-    clusterIndexRef.current = index
-    return index
-  }, [itemsWithDatetimeAndCoords])
+  const clusterIndex = null
 
-  const useJitter = dataSource === 'noticias' || dataSource === 'all'
+  const useJitter = dataSource === 'noticias'
 
   const handleSelectItem = (item) => {
     setSelectedItem(item)
@@ -699,14 +641,14 @@ export default function InteractiveMap({ theme = 'light' }) {
         })
       })
 
-      const showNoise = visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise' || dataSourceRef.current === 'all'
+      const showNoise = visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise'
       if (showNoise) {
         ensureNoiseHexLayer(map, true)
         updateNoiseHexLayer(map)
       } else {
         ensureNoiseHexLayer(map, false)
       }
-      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'all'
+      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex')
       if (showGoogleHex) {
         ensureGoogleHexLayer(map, true)
         updateGoogleHexLayer(map, googleHexPoints)
@@ -755,12 +697,12 @@ export default function InteractiveMap({ theme = 'light' }) {
     map.once('style.load', () => {
       if (!mapRef.current) return
       const updateNoiseIfVisible = () => {
-        if (visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise' || dataSourceRef.current === 'all') {
+        if (visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise') {
           updateNoiseHexLayer(map)
         }
       }
       const updateGoogleHexIfVisible = () => {
-        if (visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex' || dataSourceRef.current === 'all') {
+        if (visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex') {
           updateGoogleHexLayer(map, googleHexPoints)
         }
       }
@@ -785,13 +727,11 @@ export default function InteractiveMap({ theme = 'light' }) {
 
       const onSelect = (item) => handleSelectRef.current(item)
       const getPinSource = (item) =>
-        dataSourceRef.current === 'all'
-          ? item._mapSource || undefined
-          : dataSourceRef.current === 'airbnb'
-            ? 'airbnb'
-            : dataSourceRef.current === 'noticias'
-              ? 'noticias'
-              : undefined
+        dataSourceRef.current === 'airbnb'
+          ? 'airbnb'
+          : dataSourceRef.current === 'noticias'
+            ? 'noticias'
+            : undefined
       markersRef.current.forEach((m) => m.remove())
       const markers = itemsWithDatetimeAndCoords
         .map((item) => createMapMarker(item, map, onSelect, { useJitter, source: getPinSource(item) }))
@@ -811,12 +751,12 @@ export default function InteractiveMap({ theme = 'light' }) {
         })
       })
 
-      const showNoise = visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise' || dataSourceRef.current === 'all'
+      const showNoise = visibleLayerIdsRef.current.includes('noise-hex') || dataSourceRef.current === 'noise'
       if (showNoise) {
         ensureNoiseHexLayer(map, true)
         updateNoiseHexLayer(map)
       }
-      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex' || dataSourceRef.current === 'all'
+      const showGoogleHex = visibleLayerIdsRef.current.includes('google-hex') || dataSourceRef.current === 'google-review-hex'
       if (showGoogleHex) {
         ensureGoogleHexLayer(map, true)
         updateGoogleHexLayer(map, googleHexPoints)
@@ -879,113 +819,27 @@ export default function InteractiveMap({ theme = 'light' }) {
         })
       }
       markersRef.current = markers
-      const bounds = new mapboxgl.LngLatBounds()
-      markers.forEach((m) => {
-        const [lng, lat] = m.getLngLat().toArray()
-        bounds.extend([lng, lat])
-      })
-      if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
-        map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
-      }
-      return
-    }
-    if (dataSource === 'all') {
-      ensureNoiseHexLayer(map, true)
-      updateNoiseHexLayer(map)
-      ensureGoogleHexLayer(map, true)
-      updateGoogleHexLayer(map)
-      const onSelect = (item) => handleSelectRef.current(item)
-      const indexAll = clusterIndexRef.current
-      if (indexAll) {
-        const updateClusterMarkers = () => {
-          const b = map.getBounds()
-          const zoom = Math.floor(map.getZoom())
-          const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
-          const clusters = indexAll.getClusters(bbox, zoom)
-          markersRef.current.forEach((m) => m.remove())
-          const newMarkers = clusters.map((cluster) => {
-            if (cluster.properties?.cluster) {
-              return createClusterMarker(cluster, map, onSelect, {
-                onClusterClick: (c) => {
-                  const expZoom = indexAll.getClusterExpansionZoom(c.id)
-                  map.flyTo({ center: c.geometry.coordinates, zoom: expZoom, duration: 400 })
-                },
-              })
-            }
-            const item = cluster.properties?.item
-            return item ? createMapMarker(item, map, onSelect, { useJitter, source: item._mapSource }) : null
-          }).filter(Boolean)
-          markersRef.current = newMarkers
-        }
-        updateClusterMarkers()
-        const onMoveEnd = () => updateClusterMarkers()
-        map.on('moveend', onMoveEnd)
+      if (markers.length > 0) {
         const bounds = new mapboxgl.LngLatBounds()
-        const centroids = getParkCentroids()
-        if (centroids && typeof centroids === 'object') {
-          Object.values(centroids).forEach((c) => {
-            if (c?.lat != null && c?.lng != null) bounds.extend([c.lng, c.lat])
-          })
-        }
-        noisePoints.forEach((p) => {
-          if (p && p.lat != null && p.lng != null) {
-            bounds.extend([p.lng, p.lat])
-          }
+        markers.forEach((m) => {
+          const ll = m.getLngLat()
+          if (!ll) return
+          const { lng, lat } = ll
+          if (lng == null || lat == null) return
+          bounds.extend([lng, lat])
         })
-        googleHexPoints.forEach((p) => {
-          if (p && p.lat != null && p.lng != null) {
-            bounds.extend([p.lng, p.lat])
-          }
-        })
-        itemsWithDatetimeAndCoords.forEach((item) => {
-          if (item?.coordinates?.lat != null && item?.coordinates?.lng != null) {
-            bounds.extend([item.coordinates.lng, item.coordinates.lat])
-          }
-        })
-        if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
-          map.fitBounds(bounds, { padding: 80, maxZoom: 13, duration: 600 })
+        if (
+          bounds.getWest() !== bounds.getEast() &&
+          bounds.getSouth() !== bounds.getNorth()
+        ) {
+          map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 600 })
         }
-        return () => map.off('moveend', onMoveEnd)
-      }
-      const markers = itemsWithDatetimeAndCoords
-        .map((item) =>
-          createMapMarker(item, map, onSelect, {
-            useJitter,
-            source: item._mapSource || undefined,
-          })
-        )
-        .filter(Boolean)
-      markersRef.current = markers
-      const bounds = new mapboxgl.LngLatBounds()
-      const centroids = getParkCentroids()
-      if (centroids && typeof centroids === 'object') {
-        Object.values(centroids).forEach((c) => {
-          if (c?.lat != null && c?.lng != null) bounds.extend([c.lng, c.lat])
-        })
-      }
-      noisePoints.forEach((p) => {
-        if (p && p.lat != null && p.lng != null) {
-          bounds.extend([p.lng, p.lat])
-        }
-      })
-      googleHexPoints.forEach((p) => {
-        if (p && p.lat != null && p.lng != null) {
-          bounds.extend([p.lng, p.lat])
-        }
-      })
-      itemsWithDatetimeAndCoords.forEach((item) => {
-        if (item?.coordinates?.lat != null && item?.coordinates?.lng != null) {
-          bounds.extend([item.coordinates.lng, item.coordinates.lat])
-        }
-      })
-      if (bounds.getNorth() !== bounds.getSouth() || bounds.getWest() !== bounds.getEast()) {
-        map.fitBounds(bounds, { padding: 80, maxZoom: 13, duration: 600 })
       }
       return
     }
     if (itemsWithDatetimeAndCoords.length === 0) return
     const onSelect = (item) => handleSelectRef.current(item)
-    const pinSource = dataSource === 'airbnb' ? 'airbnb' : dataSource === 'noticias' ? 'noticias' : undefined
+    const pinSource = undefined
     const index = clusterIndexRef.current
     if (index) {
       const updateClusterMarkers = () => {
@@ -1040,14 +894,14 @@ export default function InteractiveMap({ theme = 'light' }) {
       const outlineId = `${layerId}-line`
       if (map.getLayer(outlineId)) map.setLayoutProperty(outlineId, 'visibility', v)
     })
-    const noiseVisible = visibleLayerIds.includes('noise-hex') || dataSource === 'noise' || dataSource === 'all'
+    const noiseVisible = visibleLayerIds.includes('noise-hex') || dataSource === 'noise'
     if (noiseVisible && map.getSource(NOISE_SOURCE_ID)) {
       ensureNoiseHexLayer(map, true)
       updateNoiseHexLayer(map)
     } else if (map.getLayer(NOISE_LAYER_ID)) {
       map.setLayoutProperty(NOISE_LAYER_ID, 'visibility', noiseVisible ? 'visible' : 'none')
     }
-    const googleHexVisible = visibleLayerIds.includes('google-hex') || dataSource === 'all'
+    const googleHexVisible = visibleLayerIds.includes('google-hex')
     if (googleHexVisible) {
       ensureGoogleHexLayer(map, true)
       updateGoogleHexLayer(map)
@@ -1150,14 +1004,12 @@ export default function InteractiveMap({ theme = 'light' }) {
 
   const isLoadingPinData =
     (dataSource === 'airbnb' && airbnbData.loading) ||
-    (dataSource === 'noticias' && noticiasData.loading) ||
-    (dataSource === 'all' && (airbnbData.loading || noticiasData.loading || googleData.loading))
+    (dataSource === 'noticias' && noticiasData.loading)
   const canShowMap =
     isLoadingPinData ||
     itemsWithDatetimeAndCoords.length > 0 ||
     (dataSource === 'noise' && hasNoiseData) ||
-    (dataSource === 'google-review-hex' && hasGoogleHexData) ||
-    (dataSource === 'all' && (itemsWithDatetimeAndCoords.length > 0 || hasNoiseData || hasGoogleHexData))
+    (dataSource === 'google-review-hex' && hasGoogleHexData)
   if (!canShowMap) {
     return (
       <div className="interactive-map-page">
@@ -1166,9 +1018,7 @@ export default function InteractiveMap({ theme = 'light' }) {
             ? 'No hay datos de ruido en TRACKS (MORAZAN, SAN PEDRO, TRES RIOS).'
             : dataSource === 'google-review-hex'
               ? 'No hay datos de Google Review con coordenadas.'
-              : dataSource === 'all'
-                ? 'No hay datos de ruido ni Google Review para mostrar en Todo.'
-                : 'No hay ítems con coordenadas y fecha para esta fuente.'}
+              : 'No hay ítems con coordenadas y fecha para esta fuente.'}
         </p>
         <div className="map-data-source-tabs" role="tablist">
           {DATA_SOURCE_OPTIONS.map((opt) => (
@@ -1195,7 +1045,7 @@ export default function InteractiveMap({ theme = 'light' }) {
           <button type="button" onClick={() => setMapError(null)} aria-label="Cerrar">×</button>
         </div>
       )}
-      <div className={`interactive-map-left${dataSource === 'all' ? ' interactive-map-left--todo' : ''}`}>
+      <div className="interactive-map-left">
         <div className="map-data-source-tabs" role="tablist" aria-label="Fuente de datos del mapa">
           {DATA_SOURCE_OPTIONS.map((opt) => (
             <button
@@ -1210,48 +1060,7 @@ export default function InteractiveMap({ theme = 'light' }) {
             </button>
           ))}
         </div>
-        {dataSource === 'all' ? (
-          <div className="map-all-panel">
-            <h3 className="map-noise-summary-title">Todo · 4 fuentes</h3>
-            <p className="map-all-intro">
-              Combinación de Airbnb, Google Review, Noticias y Ruido. Enfoque en la zona de los 3 parques (Morazán, San Pedro, Tres Ríos).
-            </p>
-            <div className="map-all-legends-row">
-              <div className="map-noise-legend">
-                <span className="map-noise-legend-title">LAeq (dB)</span>
-                <div className="map-noise-legend-gradient" />
-                <div className="map-noise-legend-labels">
-                  <span>40</span>
-                  <span>95</span>
-                </div>
-                <p className="map-noise-legend-hint">Hexágonos · NoiseCapture (3 parques)</p>
-              </div>
-              <div className="map-noise-legend">
-                <span className="map-noise-legend-title">Valoración (1–5)</span>
-                <div className="map-noise-legend-gradient map-google-hex-gradient" />
-                <div className="map-noise-legend-labels">
-                  <span>1</span>
-                  <span>5</span>
-                </div>
-                <p className="map-noise-legend-hint">Hexágonos por valoración media</p>
-              </div>
-            </div>
-            <InteractiveTimeline
-              items={itemsWithDatetime}
-              visibleItems={visibleItems}
-              selectedItem={selectedItem}
-              onSelectItem={handleSelectItem}
-              scale={timelineScale}
-              onScaleChange={setTimelineScale}
-              viewRange={viewRange}
-              onViewRangeChange={setViewRange}
-              fullRange={fullRange}
-              categoryOrder={[...AIRBNB_STAR_IDS, ...NOTICIAS_ASSOCIATION_IDS, ...GOOGLE_REVIEW_ASSOCIATION_IDS]}
-              categoryLabels={allTimelineCategoryLabels}
-              compactMode
-            />
-          </div>
-        ) : dataSource === 'google-review-hex' ? (
+        {dataSource === 'google-review-hex' ? (
           <div className="map-noise-panel map-google-hex-panel">
             <div className="map-noise-legend">
               <span className="map-noise-legend-title">Valoración (1–5)</span>
